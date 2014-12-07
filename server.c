@@ -6,12 +6,18 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "photo.h"
 
 #define BUFSIZE (10)
-#define SERVERPORT (5000)
+
 #define MAXPENDING (5)
 
+
+
 void handleconnection(int clientsock);
+//void dll_recv(int frm);//data link recv
+//void phl_send(ack);//ack
+
 
 int main() {
 	int servsock;
