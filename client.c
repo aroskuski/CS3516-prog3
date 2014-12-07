@@ -11,6 +11,7 @@
 #define BUFSIZE 10
 #define SERVERPORT (5000)
 
+char *getIPbyHostName(char *servName, char *addr);
 char addr[INET_ADDRSTRLEN];
 
 int main(int argc, char *argv[]) {
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
     printf("inet_pton() failed: invalid address string\n");
   else if (rtnVal < 0)
     printf("inet_pton() failed\n");
-  servAddr.sin_port = htons(servPort);    // Server port
+  servAddr.sin_port = htons(SERVERPORT);    // Server port
 
 
   // establish connection
@@ -54,4 +55,20 @@ int main(int argc, char *argv[]) {
 
   close(sock);
   exit(0);
+}
+
+char *getIPbyHostName(char *servName, char *addr)  
+{
+  struct hostent *host;
+  char **ph;
+
+  if ((host = gethostbyname(servName)) == NULL){
+    printf("gethostbyname(): host connection failed\n");
+    exit(0);
+  }
+
+  ph = host -> h_addr_list;
+  inet_ntop(AF_INET, *ph, addr, INET_ADDRSTRLEN);
+  return addr;
+
 }
