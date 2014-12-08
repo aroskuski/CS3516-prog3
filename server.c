@@ -2,21 +2,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "photo.h"
 
-#define BUFSIZE (10)
+#define BUFSIZE (130)
 
 #define MAXPENDING (5)
 
 
 
-void handleconnection(int clientsock);
-//void dll_recv(int frm);//data link recv
-//void phl_send(ack);//ack
+void handleconnection();
+int phl_recv();
+void dll_recv(unsigned char *frame, int size);
+void nwl_recv(unsigned char *packet, int size);
+void app_recv(unsigned char *photo, int size);
+//void nwl_send(unsigned char *photo, int size);
+void dll_send(unsigned char *packet, int size);
+void phl_send(unsigned char *frame, int size);
+int totalwindowsize();
+
+int clientsock;
+unsigned char *framewindow[10];
+unsigned char framewindowseq[10][2];
+int framewindowsize[10];
+int framewindownext = 0;
 
 
 int main() {
@@ -50,7 +63,7 @@ int main() {
 
 	//forever loop
 	for(;;){
-		int clientsock;
+		//int clientsock;
 		pid_t result;
 		struct sockaddr_in clientaddr;
 		socklen_t clientaddrlen = sizeof(clientaddr);
@@ -74,5 +87,159 @@ int main() {
 }
 
 void handleconnection(int clientsock){
+	//if(fcntl(clientsock, F_SETFL, fcntl(clientsock, F_GETFL) | O_NONBLOCK) < 0) {
+		// handle error
+	//}
+	int connection_open = 1;
+	while (connection_open){
+		connection_open = phl_recv(clientsock);
+	}
 	exit(0);
+}
+
+int phl_recv(int clientsock) {
+	int bytes_recved = 0;
+	unsigned char buf[BUFSIZE];
+	unsigned char frame[BUFSIZE];
+	int i;
+	ssize_t result;
+	int nodata_count = 0;
+	int frame_recved = 0;
+	while (!frame_recved){
+		result = recv(clientsock, buf, BUFSIZE, MSG_DONTWAIT);
+		if (result == 0){
+			return 0;
+		} else if (result < 0){
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				nodata_count++;
+				if (nodata_count > 5){
+					frame_recved = 1;
+				}
+			} else {
+				printf("recv() failed\n");
+				exit(1);
+			}
+		} else {
+			for(i = bytes_recved; i < result + bytes_recved; i++){
+				frame[i] = buf[i - bytes_recved];
+			}
+			bytes_recved += result;
+			if (bytes_recved == 130){
+				frame_recved = 1;
+			}
+		}
+	}
+	dll_recv(frame, bytes_recved);
+}
+
+void dll_recv(unsigned char *frame, int size){
+	int eop = 0;
+	int i;
+	int j;
+	int k = 0;
+		
+	unsigned char ack[5];
+	ack[0] = frame[0];
+	ack[1] = frame[1];
+	ack[2] = FT_ACK;
+	ack[3] = frame[0];
+	ack[4] = frame[1];
+	phl_send(ack, 5);
+
+	if(frame[3] == EOP){
+		eop = 1;
+	}
+
+	framewindow[framewindownext] = malloc(size - 6);
+	framewindowsize[framewindownext] = size - 6;
+	framewindowseq[framewindownext][0] = frame[0];
+	framewindowseq[framewindownext][1] = frame[1];
+	for(i = 4; i < size - 2; i++){
+		framewindow[framewindownext][i] = frame[i];
+	}
+	framewindownext++;
+
+	if (eop){
+		//reassemble packet
+		unsigned char *packet = malloc(totalwindowsize());
+		for (i = 0; i < framewindownext; i++){
+			for (j = 0; j < framewindowsize[i]; j++){
+				packet[k] = framewindow[i][j];
+				k++;
+			}
+		}
+
+		nwl_recv(packet, k);
+
+		//clear frame buffers
+		free(packet);
+		for (i = 0; i < framewindownext; i++){
+			free(framewindow[i]);
+		}
+		framewindownext = 0;
+	}
+}
+
+void nwl_recv(unsigned char *packet, int size){
+	int eop = 0;
+	//unsigned char *packet = dll_recv();
+	unsigned char ack[5];
+	ack[0] = packet[0];
+	ack[1] = packet[1];
+	ack[2] = FT_ACK;
+	ack[3] = packet[0];
+	ack[4] = packet[1];
+	dll_send(ack, 5);
+
+	FILE *outfile = fopen("photonew.jpg", "a");
+	if (fwrite(packet, 1, size - 1, outfile) == 0){
+		printf("fwrite failed\n");
+		exit(1);
+	}
+}
+
+void app_recv(unsigned char *photo, int size){
+	FILE *outfile = fopen("photonew.jpg", "w+");
+	if (fwrite(photo, 1, size, outfile) == 0){
+		printf("fwrite failed\n");
+		exit(1);
+	}
+}
+
+/*
+void nwl_send(unsigned char *photo){
+
+}
+*/
+
+void dll_send(unsigned char *packet, int size){
+	int i;
+	unsigned char frame[130];
+	frame[0] = 0;
+	frame[1] = 1;
+	frame[2] = FT_DATA;
+	frame[3] = EOP;
+	for (i = 0; i < size; i++){
+		frame[i + 4] = packet[i];
+	}
+
+	phl_send(frame, size + 6);
+	
+}
+
+void phl_send(unsigned char *frame, int size){
+	ssize_t sent = send(clientsock, frame, size, 0);
+	if (sent != size){
+		printf("send() failed\n");
+		exit(1);
+	}
+}
+
+int totalwindowsize(){
+	int result;
+	int i;
+	for (i = 0; i < framewindownext; i++){
+		result += framewindowsize[i];
+	}
+	return result;
 }

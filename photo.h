@@ -1,1 +1,5 @@
 #define SERVERPORT (5000)
+#define FT_ACK (2)
+#define FT_DATA (1)
+#define EOP (1)
+#define NOT_EOP (0)
