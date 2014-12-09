@@ -130,6 +130,7 @@ int phl_recv(int clientsock) {
 		}
 	}
 	dll_recv(frame, bytes_recved);
+	return 1;
 }
 
 void dll_recv(unsigned char *frame, int size){
@@ -183,13 +184,13 @@ void dll_recv(unsigned char *frame, int size){
 void nwl_recv(unsigned char *packet, int size){
 	int eop = 0;
 	//unsigned char *packet = dll_recv();
-	unsigned char ack[5];
-	ack[0] = packet[0];
-	ack[1] = packet[1];
-	ack[2] = FT_ACK;
-	ack[3] = packet[0];
-	ack[4] = packet[1];
-	dll_send(ack, 5);
+	unsigned char ack[1];
+	ack[0] = FT_ACK;
+	//ack[1] = packet[1];
+	//ack[2] = FT_ACK;
+	//ack[3] = packet[0];
+	//ack[4] = packet[1];
+	dll_send(ack, 1);
 
 	FILE *outfile = fopen("photonew.jpg", "a");
 	if (fwrite(packet, 1, size - 1, outfile) == 0){
