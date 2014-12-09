@@ -120,6 +120,7 @@ int phl_recv(int clientsock) {
 				exit(1);
 			}
 		} else {
+			nodata_count = 0;
 			for(i = bytes_recved; i < result + bytes_recved; i++){
 				frame[i] = buf[i - bytes_recved];
 			}
