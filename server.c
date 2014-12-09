@@ -193,6 +193,10 @@ void nwl_recv(unsigned char *packet, int size){
 	//ack[4] = packet[1];
 	dll_send(ack, 1);
 
+	if(packet[size - 1] == EOP){
+		eop = 1;
+	}
+
 	FILE *outfile = fopen("photonew.jpg", "a");
 	if (fwrite(packet, 1, size - 1, outfile) == 0){
 		printf("fwrite failed\n");
