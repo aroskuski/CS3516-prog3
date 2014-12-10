@@ -98,50 +98,35 @@ void handleconnection(int clientsock){
 }
 
 int phl_recv(int clientsock) {
-	fd_set socketset;
+	//fd_set socketset;
 	int bytes_recved = 0;
 	unsigned char buf[BUFSIZE];
 	unsigned char frame[BUFSIZE];
 	int i;
 	ssize_t result;
-	int nodata_count = 0;
+	//int nodata_count = 0;
 	int frame_recved = 0;
-	struct timeval timeout;
-	struct timeval timeout_tmp;
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
-	while (!frame_recved){
-		FD_ZERO(&socketset);
-		FD_SET(clientsock, &socketset);
-		timeout_tmp = timeout;
-		result = select(clientsock + 1, &socketset, NULL, NULL, &timeout_tmp);
-		if (result == 0){
-			if(bytes_recved > 6){
-				frame_recved = 1;
-			}
-		} else if (result > 0){
-			result = recv(clientsock, buf, BUFSIZE, 0);
-			if (result == 0){
-				return 0;
-			} else if (result < 0){
-				printf("recv() failed\n");
-				exit(1);
-			} else {
-				//nodata_count = 0;
-				for(i = bytes_recved; i < result + bytes_recved; i++){
-					frame[i] = buf[i - bytes_recved];
-				}
-				bytes_recved += result;
-				if (bytes_recved == 130){
-					frame_recved = 1;
-				}
-			}
-		} else {
-			printf("select failed\n");
-			exit(1);
+	//struct timeval timeout;
+	//struct timeval timeout_tmp;
+	//timeout.tv_sec = 1;
+	//timeout.tv_usec = 0;
+	
+
+	result = recv(clientsock, buf, BUFSIZE, 0);
+	if (result == 0){
+		return 0;
+	} else if (result < 0){
+		printf("recv() failed\n");
+		exit(1);
+	} else {
+		//nodata_count = 0;
+		for(i = bytes_recved; i < result + bytes_recved; i++){
+			frame[i] = buf[i - bytes_recved];
 		}
-		
+		bytes_recved = result;
 	}
+
+	
 	dll_recv(frame, bytes_recved);
 	return 1;
 }
