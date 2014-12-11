@@ -164,10 +164,17 @@ void dll_recv(unsigned char *frame, int size){
 	int i;
 	int j;
 	int k = 0;
+	int dup;
 
 	//if(errorcheck(frame, size)){
 	//	return;
 	//}
+
+	for(i = 0; i < framewindownext; i++){
+		if((frame[0] == framewindowseq[i][0])  && (frame[1] == framewindowseq[i][1])){
+			dup = 1;
+		}
+	}
 		
 	unsigned char ack[5];
 	ack[0] = frame[0];
@@ -176,6 +183,10 @@ void dll_recv(unsigned char *frame, int size){
 	ack[3] = frame[0];
 	ack[4] = frame[1];
 	phl_send(ack, 5);
+
+	if(dup){
+		return;
+	}
 
 	if(frame[3] == EOP){
 		eop = 1;
