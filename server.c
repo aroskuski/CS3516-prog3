@@ -127,7 +127,7 @@ void handleconnection(int clientsock){
 int phl_recv(int clientsock) {
 	//fd_set socketset;
 	int bytes_recved = 0;
-	unsigned char buf[BUFSIZE];
+	//unsigned char buf[BUFSIZE];
 	unsigned char frame[BUFSIZE];
 	int i;
 	ssize_t result;
@@ -139,7 +139,7 @@ int phl_recv(int clientsock) {
 	//timeout.tv_usec = 0;
 	
 
-	result = recv(clientsock, buf, BUFSIZE, 0);
+	result = recv(clientsock, frame, BUFSIZE, 0);
 	if (result == 0){
 		return 0;
 	} else if (result < 0){
@@ -147,9 +147,9 @@ int phl_recv(int clientsock) {
 		exit(1);
 	} else {
 		//nodata_count = 0;
-		for(i = bytes_recved; i < result + bytes_recved; i++){
-			frame[i] = buf[i - bytes_recved];
-		}
+		//for(i = bytes_recved; i < result + bytes_recved; i++){
+		//	frame[i] = buf[i - bytes_recved];
+		//}
 		bytes_recved = result;
 	}
 
