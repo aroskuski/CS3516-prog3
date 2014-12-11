@@ -320,10 +320,12 @@ int errorcheck(unsigned char *frame, int size){
 	unsigned char checkbytes[2];
 	int i;
 	checkbytes[0] = 0;
-	checkbytes[1] = 0;	
-	for(i = 0; i < ((size - 2) / 2); i++){
-		checkbytes[0] ^= frame[i * 2];
-		checkbytes[1] ^= frame[(i * 2) + 1];
+	checkbytes[1] = 0;
+	for(i = 0; i < (size - 2); i += 2){
+		checkbytes[0] ^= frame[i];
+		if (i < size -2){
+			checkbytes[1] ^= frame[i + 1];
+		}
 	}
 	return ((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
 }
