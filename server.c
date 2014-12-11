@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/file.h>
 #include "photo.h"
 
 #define BUFSIZE (130)
@@ -24,12 +25,18 @@ void app_recv(unsigned char *photo, int size);
 void dll_send(unsigned char *packet, int size);
 void phl_send(unsigned char *frame, int size);
 int totalwindowsize();
+void printtolog(char *logtext);
 
+FILE *logfile;
+FILE *outfile;
+int currfile = 0;
+int outclosed = 1;
 int clientsock;
 unsigned char *framewindow[10];
 unsigned char framewindowseq[10][2];
 int framewindowsize[10];
 int framewindownext = 0;
+int clientid = 0;
 
 
 int main() {
@@ -37,6 +44,7 @@ int main() {
 	struct sockaddr_in servaddress;
 	in_port_t port = SERVERPORT;
 	
+
 	//Create Socket
 	if((servsock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
 		printf("socket() failed\n");
@@ -79,6 +87,7 @@ int main() {
 			handleconnection(clientsock);
 		} else if (result > 0) {
 			close(clientsock);
+			clientid++;
 		} else if (result < 0){
 			printf("fork() failed\n");
 			exit(1);
@@ -90,10 +99,28 @@ void handleconnection(int clientsock){
 	//if(fcntl(clientsock, F_SETFL, fcntl(clientsock, F_GETFL) | O_NONBLOCK) < 0) {
 		// handle error
 	//}
+	char logfilename[20];
+	//char outfilename[20];
+	char id[5];
+	strcpy(logfilename, "server_");
+	sprintf(id, "%d", clientid);
+	strcat(logfilename, id);
+	strcat(logfilename, ".log");
+	logfile = fopen(logfilename, "w");
+
+	
+	
+	if (logfile = NULL){
+		printf("failed to open logfile\n");
+		exit(1);
+	}
+
 	int connection_open = 1;
 	while (connection_open){
 		connection_open = phl_recv(clientsock);
 	}
+
+	fclose(logfile);
 	exit(0);
 }
 
@@ -182,6 +209,21 @@ void dll_recv(unsigned char *frame, int size){
 void nwl_recv(unsigned char *packet, int size){
 	int eop = 0;
 	//unsigned char *packet = dll_recv();
+
+	if (outclosed){
+		char outfilename[20];
+		char id[5];
+		strcpy(outfilename, "photonew");
+		sprintf(id, "%d", clientid);
+		strcat(outfilename, id);
+		sprintf(id, "%d", currfile);
+		strcat(outfilename, id);
+		strcat(outfilename, ".jpg");
+		outfile = fopen(outfilename, "wb");
+		outclosed = 0;
+	}
+	
+
 	unsigned char ack[1];
 	ack[0] = FT_ACK;
 	//ack[1] = packet[1];
@@ -194,10 +236,16 @@ void nwl_recv(unsigned char *packet, int size){
 		eop = 1;
 	}
 
-	FILE *outfile = fopen("photonew.jpg", "a");
+	//FILE *outfile = fopen("photonew.jpg", "a");
 	if (fwrite(packet, 1, size - 1, outfile) == 0){
 		printf("fwrite failed\n");
 		exit(1);
+	}
+
+	if (eop){
+		fclose(outfile);
+		outclosed = 1;
+		currfile++;
 	}
 }
 
@@ -245,4 +293,9 @@ int totalwindowsize(){
 		result += framewindowsize[i];
 	}
 	return result;
+}
+
+void printtolog(char *logtext){
+	fputs(logtext, logfile);
+	fputc('\n', logfile);
 }
