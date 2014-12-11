@@ -26,6 +26,7 @@ void dll_send(unsigned char *packet, int size);
 void phl_send(unsigned char *frame, int size);
 int totalwindowsize();
 void printtolog(char *logtext);
+int errorcheck(unsigned char *frame, int size);
 
 FILE *logfile;
 FILE *outfile;
@@ -163,6 +164,10 @@ void dll_recv(unsigned char *frame, int size){
 	int i;
 	int j;
 	int k = 0;
+
+	//if(errorcheck(frame, size)){
+	//	return;
+	//}
 		
 	unsigned char ack[5];
 	ack[0] = frame[0];
@@ -298,4 +303,16 @@ int totalwindowsize(){
 void printtolog(char *logtext){
 	fputs(logtext, logfile);
 	fputc('\n', logfile);
+}
+
+int errorcheck(unsigned char *frame, int size){
+	unsigned char checkbytes[2];
+	int i;
+	checkbytes[0] = 0;
+	checkbytes[1] = 0;	
+	for(i = 0; i < ((size - 2) / 2); i++){
+		checkbytes[0] ^= frame[i * 2];
+		checkbytes[1] ^= frame[(i * 2) + 1];
+	}
+	return ((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
 }
