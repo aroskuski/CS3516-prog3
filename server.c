@@ -27,6 +27,7 @@ void phl_send(unsigned char *frame, int size);
 int totalwindowsize();
 void printtolog(char *logtext);
 int errorcheck(unsigned char *frame, int size);
+void generateED(unsigned char *frame, int size, unsigned char *ed);
 
 FILE *logfile;
 FILE *outfile;
@@ -282,6 +283,7 @@ void nwl_send(unsigned char *photo){
 void dll_send(unsigned char *packet, int size){
 	int i;
 	unsigned char frame[130];
+	unsigned char ed[2];
 	frame[0] = 0;
 	frame[1] = 1;
 	frame[2] = FT_DATA;
@@ -289,6 +291,9 @@ void dll_send(unsigned char *packet, int size){
 	for (i = 0; i < size; i++){
 		frame[i + 4] = packet[i];
 	}
+	generateED(frame, size + 6, ed);
+	frame[(size + 6) - 2] = ed[0];
+	frame[(size + 6) - 1] = ed[1];
 
 	phl_send(frame, size + 6);
 	
@@ -328,4 +333,16 @@ int errorcheck(unsigned char *frame, int size){
 		}
 	}
 	return ((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
+}
+
+void generateED(unsigned char *frame, int size, unsigned char *ed){
+	int i;
+	ed[0] = 0;
+	ed[1] = 0;
+	for(i = 0; i < (size - 2); i += 2){
+		ed[0] ^= frame[i];
+		if (i < size -2){
+			ed[1] ^= frame[i + 1];
+		}
+	}
 }
