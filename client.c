@@ -191,7 +191,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     frame[0] = 0;
     frame[1] = 1;
     frame[2] = FT_DATA;
-    if((buffer_len - buf_pos) <= 0){
+    if((buffer_len - buf_pos) <= 124){
       frame[3] = EOP;
     }
     else{
