@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
   char *photo_name;
   unsigned int photo_len;
-  char ack[BUFSIZE];
+  char buffer[BUFSIZE];
   int bytes_rcvd;
   int total_bytes_rcvd;
   
@@ -93,51 +93,49 @@ int main(int argc, char *argv[]) {
 
     if((file = open(photo_name, O_RDONLY)) < 0){
       printf("File open\n");
+      exit(0);
+    }
+
+    if(send(sock, photo_name, photo_len, 0) != photo_len){
+      printf("send(): sent unexpected number of bytes\n");
       exit(1);
     }
 
     int rd_size = 0;
     char rd_buffer[BUFSIZE];
 
-    if(send(sock, photo_name, photo_len, 0) != photo_len){
-      printf("send(): sent unexpected number of bytes\n");
-      exit(0);
-    }
-    if(bytes_rcvd = recv(sock, ack, BUFSIZE - 1, 0) <= 0){
+    if(bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0) <= 0){
       printf("recv() failed\n");
     }
 
-    confirm_ack(ack);
     while((rd_size = read(file, rd_buffer, BUFSIZE)) > 0){
-      if(send(sock, rd_buffer, rd_size, 0) != rd_size){
+      if(nwl_send(sock, rd_buffer, rd_size) != rd_size){
         printf("send(): sent unexpected number of bytes\n");
-        exit(0);
+        exit(1);
       }
-      if((bytes_rcvd = recv(sock, ack, BUFSIZE - 1, 0)) <= 0){
+      if((bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0)) <= 0){
         printf("recv() failed\n");
       }
 
-      ack[bytes_rcvd] = '\0';
-      confirm_ack(ack);
+      buffer[bytes_rcvd] = '\0';
     }
 
     if(i == numofPhotos - 1){
       if(send(sock, STOP, strlen(STOP), 0) != strlen(STOP)){
         printf("send(): sent unexpected number of bytes\n");
-        exit(0);
+        exit(1);
       }
     }
     else{
       if(send(sock, NEXT, strlen(NEXT), 0) != strlen(NEXT)){
         printf("send(): sent unexpected number of bytes\n");
-        exit(0);
+        exit(1);
       }
     }
-    if((bytes_rcvd = recv(sock, ack, BUFSIZE - 1, 0)) <= 0){
+    if((bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0)) <= 0){
       printf("recv() failed\n");
-      exit(0);
+      exit(1);
     }
-    confirm_ack(ack);
   }
 
   fputc('\n', stdout); // Print a final linefeed
@@ -154,22 +152,13 @@ char *getIPbyHostName(char *servName, char *addr)
 
   if ((host = gethostbyname(servName)) == NULL){
     printf("gethostbyname(): host connection failed\n");
-    exit(0);
+    exit(1);
   }
 
   ph = host -> h_addr_list;
   inet_ntop(AF_INET, *ph, addr, INET_ADDRSTRLEN);
   return addr;
 
-}
-
-int confirm_ack(char* ack){
-  if(strcmp(ack, ACK) != 0){
-    printf("Ack not received\n");
-    exit(0);
-    return 0;
-  }
-  return(1);
 }
 
 
@@ -212,11 +201,30 @@ int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 //
 //}
 
-
 int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
-  int j;
+  int j = 0;
+  unsigned char ack;
+  unsigned char seq_num[2];
   unsigned char frame[MAX_FRAME_SIZE];
+  unsigned char ed[2];
+
+  for(i = 0; i < buffer_len; i++){
+    frame[j] = frame[i];
+    if((j == MAX_FRAME_SIZE - 1) && (i != buffer_len - 1)){
+      frame[j + 1] = NOT_EOP;
+
+      j = 0;
+    }
+    else if(i == buffer_len){
+      frame[j + 1] = EOP;
+
+      j = 0;
+    }
+    else{
+      j++;
+    }
+  }
 
 
 
