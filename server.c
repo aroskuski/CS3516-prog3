@@ -194,6 +194,14 @@ void dll_recv(unsigned char *frame, int size){
 	//}
 	dup = checkdup(frame[0], frame[1]);
 		
+	char seq[10];
+	printtolog("ACKing frame ");
+	sprintf(seq, "%d", frame[0]);
+	printtolog(seq);
+	sprintf(seq, "%d", frame[1]);
+	printtolog(seq);
+	printtolog("\n");
+
 	unsigned char ack[5];
 	ack[0] = frame[0];
 	ack[1] = frame[1];
@@ -208,8 +216,20 @@ void dll_recv(unsigned char *frame, int size){
 
 	if(frame[3] == EOP){
 		eop = 1;
+		printtolog("Frame ");
+		sprintf(seq, "%d", frame[0]);
+		printtolog(seq);
+		sprintf(seq, "%d", frame[1]);
+		printtolog(seq);
+		printtolog("is end of Packet\n");
 	}
 
+	printtolog("Storing frame ");
+	sprintf(seq, "%d", frame[0]);
+	printtolog(seq);
+	sprintf(seq, "%d", frame[1]);
+	printtolog(seq);
+	printtolog("in buffer\n");
 	framewindow[framewindownext] = malloc(size - 6);
 	framewindowsize[framewindownext] = size - 6;
 	//framewindowseq[framewindownext][0] = frame[0];
@@ -221,6 +241,7 @@ void dll_recv(unsigned char *frame, int size){
 	framewindownext++;
 
 	if (eop){
+		printtolog("Reassembling Packet\n");
 		//reassemble packet
 		unsigned char *packet = malloc(totalwindowsize());
 		for (i = 0; i < framewindownext; i++){
@@ -230,6 +251,7 @@ void dll_recv(unsigned char *frame, int size){
 			}
 		}
 
+		printtolog("Sending Packet to Network Layer\n");
 		nwl_recv(packet, k);
 
 		//clear frame buffers
@@ -246,6 +268,7 @@ void nwl_recv(unsigned char *packet, int size){
 	//unsigned char *packet = dll_recv();
 
 	if (outclosed){
+		printtolog("Opening file ");
 		char outfilename[20];
 		char id[5];
 		strcpy(outfilename, "photonew");
@@ -254,21 +277,25 @@ void nwl_recv(unsigned char *packet, int size){
 		sprintf(id, "%d", currfile);
 		strcat(outfilename, id);
 		strcat(outfilename, ".jpg");
+		printtolog(outfilename);
+		printtolog("\n");
 		outfile = fopen(outfilename, "wb");
 		outclosed = 0;
 	}
 	
-
+	printtolog("Building Network Layer ACK\n");
 	unsigned char ack[1];
 	ack[0] = FT_ACK;
 	//ack[1] = packet[1];
 	//ack[2] = FT_ACK;
 	//ack[3] = packet[0];
 	//ack[4] = packet[1];
+	printtolog("Sending packet to Data Link Layer\n");
 	dll_send(ack, 1);
 
 	if(packet[size - 1] == EOP){
 		eop = 1;
+		printtolog("Packet is end of picture\n");
 	}
 
 	//FILE *outfile = fopen("photonew.jpg", "a");
@@ -284,6 +311,7 @@ void nwl_recv(unsigned char *packet, int size){
 	}
 }
 
+/*
 void app_recv(unsigned char *photo, int size){
 	FILE *outfile = fopen("photonew.jpg", "w+");
 	if (fwrite(photo, 1, size, outfile) == 0){
@@ -291,6 +319,7 @@ void app_recv(unsigned char *photo, int size){
 		exit(1);
 	}
 }
+*/
 
 /*
 void nwl_send(unsigned char *photo){
@@ -302,6 +331,7 @@ void dll_send(unsigned char *packet, int size){
 	int i;
 	unsigned char frame[130];
 	unsigned char ed[2];
+	printtolog("Building frame\n");
 	frame[0] = 0;
 	frame[1] = 1;
 	frame[2] = FT_DATA;
@@ -309,15 +339,18 @@ void dll_send(unsigned char *packet, int size){
 	for (i = 0; i < size; i++){
 		frame[i + 4] = packet[i];
 	}
+	printtolog("Generating Error Dection bytes\n");
 	generateED(frame, size + 6, ed);
 	frame[(size + 6) - 2] = ed[0];
 	frame[(size + 6) - 1] = ed[1];
 
+	printtolog("Sending frame to Physical Layer\n");
 	phl_send(frame, size + 6);
 	
 }
 
 void phl_send(unsigned char *frame, int size){
+	printtolog("Sending data over TCP\n");
 	ssize_t sent = send(clientsock, frame, size, 0);
 	if (sent != size){
 		printf("send() failed\n");
