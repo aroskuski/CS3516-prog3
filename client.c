@@ -12,12 +12,10 @@
 #include "photo.h"
 
 
-#define BUFSIZE 256
+#define BUFSIZE 201
 #define ACK "Packet"
 #define PHOTO "photo"
 #define PHOTO_EXT "jpg"
-#define STOP "stop"
-#define NEXT "next file"
 
 #define PACKET_SIZE 200
 #define MAX_FRAME_SIZE 130
@@ -84,8 +82,8 @@ int main(int argc, char *argv[]) {
   // photo handling
   client_id = atoi(argv[2]);
   numofPhotos = atoi(argv[3]);
-  int i;
 
+  int i;
   for (i = 0; i < numofPhotos; i++)
   {
     photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, i, PHOTO_EXT);
@@ -96,45 +94,25 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    if(send(sock, photo_name, photo_len, 0) != photo_len){
-      printf("send(): sent unexpected number of bytes\n");
-      exit(1);
-    }
-
     int rd_size = 0;
-    char rd_buffer[BUFSIZE];
+    unsigned char rd_buffer[BUFSIZE];
+    int pkt_size = 0;
+    unsigned char pkt_buffer[BUFSIZE];
+    rd_size = read(file, rd_buffer, BUFSIZE - 1);
 
-    if(bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0) <= 0){
-      printf("recv() failed\n");
-    }
-
-    while((rd_size = read(file, rd_buffer, BUFSIZE)) > 0){
-      if(nwl_send(sock, rd_buffer, rd_size) != rd_size){
-        printf("send(): sent unexpected number of bytes\n");
-        exit(1);
+    while(rd_size > 0){
+      for(i = 0; i < rd_size; i++){
+        pkt_buffer[i] = rd_buffer[i];
       }
-      if((bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0)) <= 0){
-        printf("recv() failed\n");
+      pkt_size = rd_size + 1;
+      rd_size = read(file, rd_buffer, BUFSIZE - 1);
+      if(rd_size > 0){
+        pkt_buffer[pkt_size - 1] = NOT_EOP;
       }
-
-      buffer[bytes_rcvd] = '\0';
-    }
-
-    if(i == numofPhotos - 1){
-      if(send(sock, STOP, strlen(STOP), 0) != strlen(STOP)){
-        printf("send(): sent unexpected number of bytes\n");
-        exit(1);
+      else{
+        pkt_buffer[pkt_size - 1] = EOP;
       }
-    }
-    else{
-      if(send(sock, NEXT, strlen(NEXT), 0) != strlen(NEXT)){
-        printf("send(): sent unexpected number of bytes\n");
-        exit(1);
-      }
-    }
-    if((bytes_rcvd = recv(sock, buffer, BUFSIZE - 1, 0)) <= 0){
-      printf("recv() failed\n");
-      exit(1);
+      dll_send(sock, pkt_buffer, pkt_size);
     }
   }
 
