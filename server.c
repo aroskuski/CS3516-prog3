@@ -125,12 +125,16 @@ void handleconnection(int clientsock){
 		exit(1);
 	}
 
+	printtolog("Connected to client ");
+	printtolog(id);
+	printtolog("\n");
+
 	int connection_open = 1;
 	while (connection_open){
 		connection_open = phl_recv(clientsock);
 		keeplistsmall();
 	}
-	
+	printtolog("Exiting\n");
 	freelist(frameseqhead);
 	fclose(logfile);
 	exit(0);
@@ -153,6 +157,7 @@ int phl_recv(int clientsock) {
 
 	result = recv(clientsock, frame, BUFSIZE, 0);
 	if (result == 0){
+		printtolog("Connection closed by client\n");
 		return 0;
 	} else if (result < 0){
 		printf("recv() failed\n");
@@ -164,8 +169,8 @@ int phl_recv(int clientsock) {
 		//}
 		bytes_recved = result;
 	}
-
 	
+	printtolog("Frame received by physical layer, sending to Datalink Layer\n");
 	dll_recv(frame, bytes_recved);
 	return 1;
 }
@@ -178,6 +183,7 @@ void dll_recv(unsigned char *frame, int size){
 	int dup;
 
 	//if(errorcheck(frame, size)){
+	//	printtolog("Frame failed error check\n");
 	//	return;
 	//}
 
@@ -330,7 +336,7 @@ int totalwindowsize(){
 
 void printtolog(char *logtext){
 	fputs(logtext, logfile);
-	fputc('\n', logfile);
+	//fputc('\n', logfile);
 }
 
 int errorcheck(unsigned char *frame, int size){
