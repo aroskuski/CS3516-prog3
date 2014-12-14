@@ -120,7 +120,7 @@ void handleconnection(int clientsock){
 
 	
 	
-	if (logfile = NULL){
+	if (logfile == NULL){
 		printf("failed to open logfile\n");
 		exit(1);
 	}
