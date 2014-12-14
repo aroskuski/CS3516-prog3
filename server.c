@@ -192,7 +192,7 @@ void dll_recv(unsigned char *frame, int size){
 	//		dup = 1;
 	//	}
 	//}
-	dup = checkdup(frame[0], frame[1]);
+	//dup = checkdup(frame[0], frame[1]);
 		
 	char seq[10];
 	printtolog("ACKing frame ");
@@ -293,7 +293,7 @@ void nwl_recv(unsigned char *packet, int size){
 	//ack[3] = packet[0];
 	//ack[4] = packet[1];
 	printtolog("Sending packet to Data Link Layer\n");
-	dll_send(ack, 1);
+	//dll_send(ack, 1);
 
 	if(packet[size - 1] == EOP){
 		eop = 1;
