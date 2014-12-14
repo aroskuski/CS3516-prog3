@@ -20,6 +20,7 @@
 #define NEXT "next file"
 
 #define PACKET_SIZE 200
+#define MAX_FRAME_SIZE 130
 
 char *getIPbyHostName(char *servName, char *addr);
 int confirm_ack(char* ack);
@@ -27,7 +28,7 @@ char addr[INET_ADDRSTRLEN];
 
 int connect_to(char *serverName, unsigned short severPort){
 
-  int sock; //= socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);                          // Server address
+  int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);                          // Server address
   char *servName = serverName;
   char *servIP = getIPbyHostName(servName, addr);         //Get Server IP by Server Name
   struct sockaddr_in servAddr; 
@@ -51,7 +52,7 @@ int connect_to(char *serverName, unsigned short severPort){
   if (connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0){
     printf("connect() failed\n");
   }
-
+  return sock;
 }
 
 
@@ -71,10 +72,12 @@ int main(int argc, char *argv[]) {
 
   if (argc < 4) {
     printf("Parameter(s): <Server Name> <Client ID> <Number of Photos>\n");
+    exit(1);
   }
 
   if ((sock = connect_to(argv[1], SERVERPORT)) < 0) {
-    printf("socket() failed\n");  
+    printf("socket() failed\n");
+    exit(1);
   }
 
 
@@ -85,7 +88,7 @@ int main(int argc, char *argv[]) {
 
   for (i = 0; i < numofPhotos; i++)
   {
-    photo_len = sprintf(photo_name, "%s_%d_%d.%s", PHOTO, client_id, 1+i, PHOTO_EXT);
+    photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, i, PHOTO_EXT);
     printf("%s\n", photo_name);
 
     if((file = open(photo_name, O_RDONLY)) < 0){
@@ -170,26 +173,65 @@ int confirm_ack(char* ack){
 }
 
 
-int nwl_send(int sockfd, char* buffer, unsigned int buffer_len){
+int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
+  unsigned char packet[PACKET_SIZE + EOP];
+  int i;
+  int j = 0;
+  int size;
+  for(i = 0; i < buffer_len; i++){
+    packet[j] = buffer[i];
+    if((j == PACKET_SIZE - 1) && (i != buffer_len - 1)){
+      packet[j + 1] = NOT_EOP;
+      dll_send(sockfd, packet, j + 2);
+      size = dll_recv(sockfd, packet, PACKET_SIZE + EOP);
+      if(packet[0] != FT_ACK){
+        printf("Error: Packet is not an ack\n");
+        exit(1);
+      }
+      j = 0;
+    }
+    else if(i == buffer_len - 1){
+      packet[j + 1] = EOP;
+      dll_send(sockfd, packet, j + 2);
+      size = dll_recv(sockfd, packet, PACKET_SIZE + EOP);
+      if(packet[0] != FT_ACK){
+        printf("Error: Packet is not an ack\n");
+        exit(1);
+      }
+      j = 0;
+    }
+    else{
+      j++;
+    }
+  }
+
+  return 0;
+}
+
+//int nwl_recv(int sockfd, unsigned char* buffer, unsigned int buffer_len){
+//
+//}
+
+
+int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
+  int i;
+  int j;
+  unsigned char frame[MAX_FRAME_SIZE];
+
+
+
 
 }
 
-int nwl_recv(int sockfd, char* buffer, unsigned int buffer_len){
+int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
 
 }
 
-int dll_send(int sockfd, char* buffer, int buffer_len){
-
-}
-
-int dll_recv(int sockfd, char* buffer, int buffer_len){
-
-}
-
-int phl_send(int sockfd, char* buffer, int buffer_len){
+int phl_send(int sockfd, unsigned char* buffer, int buffer_len){
   return send(sockfd, buffer, buffer_len, 0);
 }
 
-int phl_recv(int sockfd, char* buffer, int buffer_len){
+int phl_recv(int sockfd, unsigned char* buffer, int buffer_len){
   return recv(sockfd, buffer, buffer_len, 0);
 }
+
