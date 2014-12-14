@@ -14,7 +14,11 @@
 
 #define MAXPENDING (5)
 
-
+struct frameseq {
+	unsigned char seq1;
+	unsigned char seq2;
+	struct frameseq* next;
+};
 
 void handleconnection();
 int phl_recv();
@@ -28,6 +32,10 @@ int totalwindowsize();
 void printtolog(char *logtext);
 int errorcheck(unsigned char *frame, int size);
 void generateED(unsigned char *frame, int size, unsigned char *ed);
+int checkdup(unsigned char seq1, unsigned char seq2);
+void keeplistsmall();
+void addframeseq(unsigned char seq1, unsigned char seq2);
+void freelist(struct frameseq *seq);
 
 FILE *logfile;
 FILE *outfile;
@@ -39,7 +47,7 @@ unsigned char framewindowseq[10][2];
 int framewindowsize[10];
 int framewindownext = 0;
 int clientid = 0;
-
+struct frameseq *frameseqhead = NULL;
 
 int main() {
 	int servsock;
@@ -120,8 +128,10 @@ void handleconnection(int clientsock){
 	int connection_open = 1;
 	while (connection_open){
 		connection_open = phl_recv(clientsock);
+		keeplistsmall();
 	}
-
+	
+	freelist(frameseqhead);
 	fclose(logfile);
 	exit(0);
 }
@@ -171,11 +181,12 @@ void dll_recv(unsigned char *frame, int size){
 	//	return;
 	//}
 
-	for(i = 0; i < framewindownext; i++){
-		if((frame[0] == framewindowseq[i][0])  && (frame[1] == framewindowseq[i][1])){
-			dup = 1;
-		}
-	}
+	//for(i = 0; i < framewindownext; i++){
+	//	if((frame[0] == framewindowseq[i][0])  && (frame[1] == framewindowseq[i][1])){
+	//		dup = 1;
+	//	}
+	//}
+	dup = checkdup(frame[0], frame[1]);
 		
 	unsigned char ack[5];
 	ack[0] = frame[0];
@@ -195,8 +206,9 @@ void dll_recv(unsigned char *frame, int size){
 
 	framewindow[framewindownext] = malloc(size - 6);
 	framewindowsize[framewindownext] = size - 6;
-	framewindowseq[framewindownext][0] = frame[0];
-	framewindowseq[framewindownext][1] = frame[1];
+	//framewindowseq[framewindownext][0] = frame[0];
+	//framewindowseq[framewindownext][1] = frame[1];
+	addframeseq(frame[0], frame[1]);	
 	for(i = 4; i < size - 2; i++){
 		framewindow[framewindownext][i] = frame[i];
 	}
@@ -344,5 +356,61 @@ void generateED(unsigned char *frame, int size, unsigned char *ed){
 		if (i < size -2){
 			ed[1] ^= frame[i + 1];
 		}
+	}
+}
+
+int checkdup(unsigned char seq1, unsigned char seq2){
+	int result = 0;
+	struct frameseq* ptr = frameseqhead;
+	while(ptr != NULL){
+		if (ptr->seq1 == seq1 && ptr->seq2 == seq2){
+			result = 1;
+		}
+		ptr = ptr->next;
+	}
+	return result;
+}
+
+void keeplistsmall(){
+	int i = 0;	
+	struct frameseq* ptr = frameseqhead;
+	while(ptr != NULL){
+		i++;
+		ptr = ptr->next;
+	}
+
+	if(i > 100){
+		struct frameseq *temp = frameseqhead;
+		frameseqhead = frameseqhead->next;
+		free(temp);
+	}
+}
+
+void addframeseq(unsigned char seq1, unsigned char seq2){
+	int done = 0;	
+	if (frameseqhead == NULL){
+		frameseqhead = malloc(sizeof(struct frameseq));
+		frameseqhead->seq1 = seq1;
+		frameseqhead->seq2 = seq2;
+		frameseqhead->next = NULL;
+	} else {
+		struct frameseq *ptr = frameseqhead;
+		while(!done){
+			if (ptr->next == NULL){
+				ptr->next = malloc(sizeof(struct frameseq));
+				ptr->next->seq1 = seq1;
+				ptr->next->seq2 = seq2;
+				ptr->next->next = NULL;
+			} else {
+				ptr = ptr->next;
+			}
+		}
+	}
+}
+
+void freelist(struct frameseq *seq){
+	if(seq != NULL){
+		freelist(seq->next);
+		free(seq);
 	}
 }
