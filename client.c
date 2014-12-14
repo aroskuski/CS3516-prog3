@@ -21,7 +21,6 @@
 #define MAX_FRAME_SIZE 130
 
 char *getIPbyHostName(char *servName, char *addr);
-int confirm_ack(char* ack);
 char addr[INET_ADDRSTRLEN];
 
 int connect_to(char *serverName, unsigned short severPort){
@@ -61,7 +60,7 @@ int main(int argc, char *argv[]) {
   int numofPhotos = 0;
   int file = 0;
 
-  char *photo_name;
+  char photo_name[5000];
   unsigned int photo_len;
   char buffer[BUFSIZE];
   int bytes_rcvd;
@@ -90,8 +89,8 @@ int main(int argc, char *argv[]) {
     printf("%s\n", photo_name);
 
     if((file = open(photo_name, O_RDONLY)) < 0){
-      printf("File open\n");
-      exit(0);
+      printf("File failed to open\n");
+      exit(1);
     }
 
     int rd_size = 0;
@@ -181,32 +180,38 @@ int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 
 int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
-  int j = 0;
+  int buf_pos;
+  int frame_size;
   unsigned char ack;
   unsigned char seq_num[2];
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
-  for(i = 0; i < buffer_len; i++){
-    frame[j] = frame[i];
-    if((j == MAX_FRAME_SIZE - 1) && (i != buffer_len - 1)){
-      frame[j + 1] = NOT_EOP;
-
-      j = 0;
-    }
-    else if(i == buffer_len){
-      frame[j + 1] = EOP;
-
-      j = 0;
+  while(buf_pos < buffer_len){
+    frame[0] = 0;
+    frame[1] = 1;
+    frame[2] = FT_DATA;
+    if((buffer_len - buf_pos) <= 0){
+      frame[3] = EOP;
     }
     else{
-      j++;
+      frame[3] = NOT_EOP;
     }
+    frame_size = 4;
+
+    for(i = 4; i < 128 && i < buffer_len; i++){
+      frame[i] = buffer[buf_pos];
+      buf_pos++;
+      frame_size++;
+    }
+    frame_size += 2;
+    frame[frame_size - 2] = 0;
+    frame[frame_size - 1] = 1;
+
+    phl_send(sockfd, frame, frame_size);
+
+    frame_size = phl_recv(sockfd, frame, MAX_FRAME_SIZE);
   }
-
-
-
-
 }
 
 int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
