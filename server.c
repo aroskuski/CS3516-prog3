@@ -156,7 +156,7 @@ int phl_recv(int clientsock) {
 	
 
 	result = recv(clientsock, frame, BUFSIZE, 0);
-	printf("result=%d\n", result);
+	//printf("result=%d\n", result);
 	if (result == 0){
 		printtolog("Connection closed by client\n");
 		return 0;
@@ -181,7 +181,7 @@ void dll_recv(unsigned char *frame, int size){
 	int i;
 	int j;
 	int k = 0;
-	int dup;
+	int dup = 0;
 
 	//if(errorcheck(frame, size)){
 	//	printtolog("Frame failed error check\n");
@@ -219,18 +219,19 @@ void dll_recv(unsigned char *frame, int size){
 	ack[4] = frame[1];
 	phl_send(ack, 5);
 
-	if(dup){
-		return;
-	}
+	//if(dup){
+	//	return;
+	//}
 
 	if(frame[3] == EOP){
 		eop = 1;
 		printtolog("Frame ");
 		sprintf(seq, "%d", frame[0]);
 		printtolog(seq);
+		printtolog(", ");
 		sprintf(seq, "%d", frame[1]);
 		printtolog(seq);
-		printtolog("is end of Packet\n");
+		printtolog(" is end of Packet\n");
 	}
 
 	printtolog("Storing frame ");
@@ -240,13 +241,17 @@ void dll_recv(unsigned char *frame, int size){
 	sprintf(seq, "%d", frame[1]);
 	printtolog(seq);
 	printtolog(" in buffer\n");
+	printf("About to malloc\n");
 	framewindow[framewindownext] = malloc(size - 6);
 	framewindowsize[framewindownext] = size - 6;
 	//framewindowseq[framewindownext][0] = frame[0];
 	//framewindowseq[framewindownext][1] = frame[1];
-	addframeseq(frame[0], frame[1]);	
+	printf("About to addframeseq\n");
+	addframeseq(frame[0], frame[1]);
+	printf("About to copy frame to buffer\n");
 	for(i = 4; i < size - 2; i++){
-		framewindow[framewindownext][i] = frame[i];
+		framewindow[framewindownext][i - 4] = frame[i];
+		printf("i=%d\nsize = %d\n", i, size);
 	}
 	framewindownext++;
 
@@ -265,8 +270,10 @@ void dll_recv(unsigned char *frame, int size){
 		nwl_recv(packet, k);
 
 		//clear frame buffers
+		printf("framewindownext=%d\n", framewindownext);
 		free(packet);
 		for (i = 0; i < framewindownext; i++){
+			printf("About to free framewindow[%d]\n", i);
 			free(framewindow[i]);
 		}
 		framewindownext = 0;
@@ -379,6 +386,7 @@ int totalwindowsize(){
 
 void printtolog(char *logtext){
 	fputs(logtext, logfile);
+	fflush(logfile);
 	//fputc('\n', logfile);
 }
 
@@ -446,10 +454,12 @@ void addframeseq(unsigned char seq1, unsigned char seq2){
 		struct frameseq *ptr = frameseqhead;
 		while(!done){
 			if (ptr->next == NULL){
+				printf("ptr->next == NULL\n");
 				ptr->next = malloc(sizeof(struct frameseq));
 				ptr->next->seq1 = seq1;
 				ptr->next->seq2 = seq2;
 				ptr->next->next = NULL;
+				done = 1;
 			} else {
 				ptr = ptr->next;
 			}
