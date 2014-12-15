@@ -48,6 +48,7 @@ int framewindowsize[10];
 int framewindownext = 0;
 int clientid = 0;
 struct frameseq *frameseqhead = NULL;
+int errorcounter = 0;
 
 int main() {
 	int servsock;
@@ -184,7 +185,7 @@ void dll_recv(unsigned char *frame, int size){
 	int dup = 0;
 
 	//if(errorcheck(frame, size)){
-	//	printtolog("Frame failed error check\n");
+	//	printtolog("Error detected in frame, discarding\n");
 	//	return;
 	//}
 
@@ -217,6 +218,11 @@ void dll_recv(unsigned char *frame, int size){
 	ack[2] = FT_ACK;
 	ack[3] = frame[0];
 	ack[4] = frame[1];
+	//errorcounter++;
+	//if (errorcounter == 13){
+	//	ack[3] ^= 1;
+	//	errorcounter = 0;
+	//}
 	phl_send(ack, 5);
 
 	if(dup){
