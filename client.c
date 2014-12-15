@@ -56,8 +56,8 @@ int connect_to(char *serverName, unsigned short severPort){
 int main(int argc, char *argv[]) {
 
   int sock;
-  int client_id = 0;
-  int numofPhotos = 0;
+  int client_id;
+  int numofPhotos;
   int file = 0;
 
   char photo_name[5000];
@@ -180,13 +180,14 @@ int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 
 int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
-  int buf_pos;
+  int buf_pos = 0;
   int frame_size;
   unsigned char ack;
   unsigned char seq_num[2];
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
+  printf("Buffer Length=%d\n", buffer_len);
   while(buf_pos < buffer_len){
     frame[0] = 0;
     frame[1] = 1;
