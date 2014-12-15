@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/file.h>
 #include "photo.h"
 
 
@@ -27,10 +28,12 @@ int dll_recv(int sockfd, unsigned char* buffer, int buffer_len);
 int phl_send(int sockfd, unsigned char* buffer, int buffer_len);
 int phl_recv(int sockfd, unsigned char* buffer, int buffer_len);
 void incrementSQ();
+void printtolog(char *logtext);
 
 
 char addr[INET_ADDRSTRLEN];
 unsigned char seq_num[2] = {0,0};
+FILE *logfile;
 
 
 int connect_to(char *serverName, unsigned short severPort){
@@ -66,8 +69,8 @@ int connect_to(char *serverName, unsigned short severPort){
 int main(int argc, char *argv[]) {
 
   int sock;
-  int client_id;
-  int numofPhotos;
+  int client_id = 0;
+  int numofPhotos = 0;
   int file = 0;
 
   char photo_name[5000];
@@ -87,10 +90,33 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-
   // photo handling
   client_id = atoi(argv[2]);
   numofPhotos = atoi(argv[3]);
+
+  char logfilename[20];
+  char id[5];
+  strcpy(logfilename, "client_");
+  sprintf(id, "%d", client_id);
+  strcat(logfilename, id);
+  strcat(logfilename, ".log");
+  logfile = fopen(logfilename, "w");
+
+  if(logfile == NULL){
+    printf("failed to open logfile\n");
+    exit(1);
+  }
+
+  char photo_count[100];
+  printtolog("Connected to server");
+  printtolog("\n");
+  printtolog("Photos being sent: ");
+  sprintf(photo_count, "%d", numofPhotos);
+  printtolog(photo_count);
+  printtolog("\n");
+
+
+
 
   int i;
   int j;
@@ -122,7 +148,9 @@ int main(int argc, char *argv[]) {
       else{
         pkt_buffer[pkt_size - 1] = EOP;
       }
+      printtolog("Packet created, Sending to Datalink Layer\n");
       dll_send(sock, pkt_buffer, pkt_size);
+      //dll_recv(ack);
     }
   }
 
@@ -197,12 +225,12 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
-  printf("Buffer Length=%d\n", buffer_len);
+  //printf("Buffer Length=%d\n", buffer_len);
   while(buf_pos < buffer_len){
     frame[0] = seq_num[0];
     frame[1] = seq_num[1];
     frame[2] = FT_DATA;
-    printf("%d\n", buffer_len - buf_pos);
+    //printf("%d\n", buffer_len - buf_pos);
     if((buffer_len - buf_pos) <= 124){
       frame[3] = EOP;
     }
@@ -220,6 +248,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     frame[frame_size - 2] = 0;
     frame[frame_size - 1] = 1;
 
+    printtolog("Frame created, Sending to Physical Layer\n");
     phl_send(sockfd, frame, frame_size);
 
     frame_size = phl_recv(sockfd, frame, MAX_FRAME_SIZE);
@@ -228,10 +257,20 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 }
 
 int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
+  /*
+  printtolog("Received Ack");
+  sprintf(seq_num, "%d", frame[0]);
+  printtolog(seq_num);
+  printtolog(", ");
+  sprintf(seq_num, "%d", frame[1]);
+  printtolog(seq_num);
+  printtolog("\n");
+  */
 
 }
 
 int phl_send(int sockfd, unsigned char* buffer, int buffer_len){
+  printtolog("Physical Layer received frame, Sending to server\n");
   return send(sockfd, buffer, buffer_len, 0);
 }
 
@@ -244,5 +283,11 @@ void incrementSQ(){
   if(seq_num[1] == 0){
     seq_num[0]++;
   }
+}
+
+void printtolog(char *logtext){
+  fputs(logtext, logfile);
+  fflush(logfile);
+  //fputc('\n', logfile);
 }
 
