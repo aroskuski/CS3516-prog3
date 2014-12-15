@@ -200,7 +200,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     }
     frame_size = 4;
 
-    for(i = 4; i < 128 && i < buffer_len; i++){
+    for(i = 4; i < 128 && buf_pos < buffer_len; i++){
       frame[i] = buffer[buf_pos];
       buf_pos++;
       frame_size++;

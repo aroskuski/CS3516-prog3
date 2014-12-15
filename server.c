@@ -156,6 +156,7 @@ int phl_recv(int clientsock) {
 	
 
 	result = recv(clientsock, frame, BUFSIZE, 0);
+	printf("result=%d\n", result);
 	if (result == 0){
 		printtolog("Connection closed by client\n");
 		return 0;
@@ -202,6 +203,13 @@ void dll_recv(unsigned char *frame, int size){
 	sprintf(seq, "%d", frame[1]);
 	printtolog(seq);
 	printtolog("\n");
+
+
+	printf("size=%d\n", size);
+	for(i = 0; i < size; i++){
+		printf("%d,", frame[i]);
+	}
+	printf("\n");
 
 	unsigned char ack[5];
 	ack[0] = frame[0];
