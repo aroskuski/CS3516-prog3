@@ -198,6 +198,7 @@ void dll_recv(unsigned char *frame, int size){
 	printtolog("ACKing frame ");
 	sprintf(seq, "%d", frame[0]);
 	printtolog(seq);
+	printtolog(", ");
 	sprintf(seq, "%d", frame[1]);
 	printtolog(seq);
 	printtolog("\n");
@@ -227,9 +228,10 @@ void dll_recv(unsigned char *frame, int size){
 	printtolog("Storing frame ");
 	sprintf(seq, "%d", frame[0]);
 	printtolog(seq);
+	printtolog(", ");
 	sprintf(seq, "%d", frame[1]);
 	printtolog(seq);
-	printtolog("in buffer\n");
+	printtolog(" in buffer\n");
 	framewindow[framewindownext] = malloc(size - 6);
 	framewindowsize[framewindownext] = size - 6;
 	//framewindowseq[framewindownext][0] = frame[0];
