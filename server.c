@@ -193,7 +193,7 @@ void dll_recv(unsigned char *frame, int size){
 	//		dup = 1;
 	//	}
 	//}
-	//dup = checkdup(frame[0], frame[1]);
+	dup = checkdup(frame[0], frame[1]);
 		
 	char seq[10];
 	printtolog("ACKing frame ");
@@ -219,9 +219,9 @@ void dll_recv(unsigned char *frame, int size){
 	ack[4] = frame[1];
 	phl_send(ack, 5);
 
-	//if(dup){
-	//	return;
-	//}
+	if(dup){
+		return;
+	}
 
 	if(frame[3] == EOP){
 		eop = 1;
@@ -251,7 +251,7 @@ void dll_recv(unsigned char *frame, int size){
 	printf("About to copy frame to buffer\n");
 	for(i = 4; i < size - 2; i++){
 		framewindow[framewindownext][i - 4] = frame[i];
-		printf("i=%d\nsize = %d\n", i, size);
+		//printf("i=%d\nsize = %d\n", i, size);
 	}
 	framewindownext++;
 
@@ -270,10 +270,10 @@ void dll_recv(unsigned char *frame, int size){
 		nwl_recv(packet, k);
 
 		//clear frame buffers
-		printf("framewindownext=%d\n", framewindownext);
+		//printf("framewindownext=%d\n", framewindownext);
 		free(packet);
 		for (i = 0; i < framewindownext; i++){
-			printf("About to free framewindow[%d]\n", i);
+			//printf("About to free framewindow[%d]\n", i);
 			free(framewindow[i]);
 		}
 		framewindownext = 0;
