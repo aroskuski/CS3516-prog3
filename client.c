@@ -20,8 +20,18 @@
 #define PACKET_SIZE 200
 #define MAX_FRAME_SIZE 130
 
+int connect_to(char *serverName, unsigned short severPort);
 char *getIPbyHostName(char *servName, char *addr);
+int dll_send(int sockfd, unsigned char* buffer, int buffer_len);
+int dll_recv(int sockfd, unsigned char* buffer, int buffer_len);
+int phl_send(int sockfd, unsigned char* buffer, int buffer_len);
+int phl_recv(int sockfd, unsigned char* buffer, int buffer_len);
+void incrementSQ();
+
+
 char addr[INET_ADDRSTRLEN];
+unsigned char seq_num[2] = {0,0};
+
 
 int connect_to(char *serverName, unsigned short severPort){
 
@@ -56,8 +66,8 @@ int connect_to(char *serverName, unsigned short severPort){
 int main(int argc, char *argv[]) {
 
   int sock;
-  int client_id = 0;
-  int numofPhotos = 0;
+  int client_id;
+  int numofPhotos;
   int file = 0;
 
   char photo_name[5000];
@@ -83,9 +93,10 @@ int main(int argc, char *argv[]) {
   numofPhotos = atoi(argv[3]);
 
   int i;
-  for (i = 0; i < numofPhotos; i++)
+  int j;
+  for (j = 0; j < numofPhotos; j++)
   {
-    photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, i, PHOTO_EXT);
+    photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, j, PHOTO_EXT);
     printf("%s\n", photo_name);
 
     if((file = open(photo_name, O_RDONLY)) < 0){
@@ -180,16 +191,16 @@ int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 
 int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
-  int buf_pos;
+  int buf_pos = 0;
   int frame_size;
   unsigned char ack;
-  unsigned char seq_num[2];
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
+  printf("Buffer Length=%d\n", buffer_len);
   while(buf_pos < buffer_len){
-    frame[0] = 0;
-    frame[1] = 1;
+    frame[0] = seq_num[0];
+    frame[1] = seq_num[1];
     frame[2] = FT_DATA;
     printf("%d\n", buffer_len - buf_pos);
     if((buffer_len - buf_pos) <= 124){
@@ -212,6 +223,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     phl_send(sockfd, frame, frame_size);
 
     frame_size = phl_recv(sockfd, frame, MAX_FRAME_SIZE);
+    incrementSQ();
   }
 }
 
@@ -225,5 +237,12 @@ int phl_send(int sockfd, unsigned char* buffer, int buffer_len){
 
 int phl_recv(int sockfd, unsigned char* buffer, int buffer_len){
   return recv(sockfd, buffer, buffer_len, 0);
+}
+
+void incrementSQ(){
+  seq_num[1]++;
+  if(seq_num[1] == 0){
+    seq_num[0]++;
+  }
 }
 
