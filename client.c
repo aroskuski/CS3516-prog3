@@ -28,6 +28,7 @@ int dll_recv(int sockfd, unsigned char* buffer, int buffer_len);
 int phl_send(int sockfd, unsigned char* buffer, int buffer_len);
 int phl_recv(int sockfd, unsigned char* buffer, int buffer_len);
 void incrementSQ();
+void generateED(unsigned char *frame, int size, unsigned char *ed);
 void printtolog(char *logtext);
 
 
@@ -122,7 +123,7 @@ int main(int argc, char *argv[]) {
   int j;
   for (j = 0; j < numofPhotos; j++)
   {
-    photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, j, PHOTO_EXT);
+    photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, j + 1, PHOTO_EXT);
     printf("%s\n", photo_name);
 
     if((file = open(photo_name, O_RDONLY)) < 0){
@@ -155,7 +156,7 @@ int main(int argc, char *argv[]) {
   }
 
   fputc('\n', stdout); // Print a final linefeed
-
+  printtolog("Client disconnected from server");
   close(sock);
   exit(0);
 }
@@ -221,7 +222,6 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
   int buf_pos = 0;
   int frame_size;
-  unsigned char ack;
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
@@ -270,7 +270,7 @@ int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
 }
 
 int phl_send(int sockfd, unsigned char* buffer, int buffer_len){
-  printtolog("Physical Layer received frame, Sending to server\n");
+  printtolog("Sending data to server\n");
   return send(sockfd, buffer, buffer_len, 0);
 }
 
@@ -283,6 +283,10 @@ void incrementSQ(){
   if(seq_num[1] == 0){
     seq_num[0]++;
   }
+}
+
+void generateED(unsigned char *frame, int size, unsigned char *ed){
+
 }
 
 void printtolog(char *logtext){
