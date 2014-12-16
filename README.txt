@@ -11,7 +11,8 @@ Each connection to the server is considered a new client.  Client ids are assign
 sequentially starting at 1. Photo numbers for each client are assigned sequentially starting at 1.
 Uses fork() to implement concurrency.
 
-Runneing the client:
+
+Running the client:
 ./client <serveraddress> <client id> <number of photos>
 
 Notes: Uses select() to implement the timeout.  Timeout is 100 milliseconds.
@@ -20,5 +21,6 @@ in the working directory.  The client will fail if a photo file is missing.
 Logs are created in the working directory.
 
 
-General Note: Frame sequence numbers are assigned independently of packet sequence numbers. 
-Sequence numbers are never explictly reset.
+General Notes: Frame sequence numbers are assigned independently of packet sequence numbers. 
+Sequence numbers are never explictly reset.  When tested using the test data, the test completed in
+about 30 minutes.

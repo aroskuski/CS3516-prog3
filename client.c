@@ -75,7 +75,7 @@ int connect_to(char *serverName, unsigned short severPort){
   return sock;
 }
 
-
+// application layer and newtork layer are in this function
 int main(int argc, char *argv[]) {
 
   int sock;
@@ -148,12 +148,13 @@ int main(int argc, char *argv[]) {
     unsigned char pkt_buffer[BUFSIZE];
     rd_size = read(file, rd_buffer, BUFSIZE - 1);
 
+    // Netwok layer packets are all 1-200 bytes of payload, with one End of Picture byte at the end
     while(rd_size > 0){
       for(i = 0; i < rd_size; i++){
         pkt_buffer[i] = rd_buffer[i];
       }
       pkt_size = rd_size + 1;
-      rd_size = read(file, rd_buffer, BUFSIZE - 1);
+      rd_size = read(file, rd_buffer, BUFSIZE - 1);// The call to read is here so it's return value can be checked
       if(rd_size > 0){
         pkt_buffer[pkt_size - 1] = NOT_EOP;
       }
@@ -163,14 +164,16 @@ int main(int argc, char *argv[]) {
       printtolog("Packet created, Sending to Datalink Layer\n");
       int ack_length;
       packet_count++;
+      // send packet data link layer and receive ack
       ack_length = dll_send(sock, pkt_buffer, pkt_size);
-      if(pkt_buffer[0] != FT_ACK){
+      //Network layer acks are just one byte that contains FT_ACK
+      if(pkt_buffer[0] != FT_ACK){//Something went wrong, exitting
         exit(1);
       }
     }
   }
 
-  fputc('\n', stdout); // Print a final linefeed
+  //fputc('\n', stdout); // Print a final linefeed
   printtolog("Client disconnected from server\n");
 
   char count[10000];
@@ -216,7 +219,7 @@ char *getIPbyHostName(char *servName, char *addr)
 
 }
 
-
+/*
 int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
   unsigned char packet[PACKET_SIZE + EOP];
   int i;
@@ -251,11 +254,13 @@ int nwl_send(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 
   return 0;
 }
+*/
 
 //int nwl_recv(int sockfd, unsigned char* buffer, unsigned int buffer_len){
 //
 //}
 
+//encapsulates the packet in frames, sends to physical layer
 int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
   int buf_pos = 0;
@@ -274,7 +279,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     frame[1] = seq_num[1];
     frame[2] = FT_DATA;
     //printf("%d\n", buffer_len - buf_pos);
-    if((buffer_len - buf_pos) <= 124){
+    if((buffer_len - buf_pos) <= 124){// If the remainder of th buffer can fit in a single frame
       frame[3] = EOP;
     }
     else{
@@ -301,10 +306,10 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     printtolog(" \n");
 
     printtolog("Frame ");
-    sprintf(seq, "%d", frame_count + 1);
+    sprintf(seq, "%lld", frame_count + 1);
     printtolog(seq);
     printtolog(", part of Packet ");
-    sprintf(seq, "%d", packet_count);
+    sprintf(seq, "%lld", packet_count);
     printtolog(seq);
     printtolog(", being sent\n");
 
@@ -335,11 +340,11 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
       FD_SET(sockfd, &bvfdRead);
       readyNo = select(sockfd + 1, &bvfdRead, NULL, NULL, &timeout);
 
-      if(readyNo < 0){ 
+      if(readyNo < 0){ //error
         printf("Select failed\n");
         exit(1);
       }
-      else if(readyNo == 0){
+      else if(readyNo == 0){//timeout
         printtolog("Ack ");
         sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
         printtolog(seq);
@@ -351,21 +356,21 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         printtolog(" \n");
 
         printtolog("Frame ");
-        sprintf(seq, "%d", frame_count);
+        sprintf(seq, "%lld", frame_count);
         printtolog(seq);
         printtolog(", part of Packet ");
-        sprintf(seq, "%d", packet_count);
+        sprintf(seq, "%lld", packet_count);
         printtolog(seq);
         printtolog(", being resent\n");
 
         phl_send(sockfd, frame, frame_size);
         resend_frame_count++;
       }
-      else{
+      else{//socket ready
         FD_ZERO(&bvfdRead);
         ack_length = phl_recv(sockfd, ack, MAX_FRAME_SIZE);
 
-        if(ack[2] != FT_ACK){
+        if(ack[2] != FT_ACK){// this is actually network layer ack
           int j;
           for(j = 4; j < ack_length - 2; j++){
             nwl_ack[j - 4] = ack[j];
@@ -373,7 +378,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
           }
         }
         else{
-          if((ack[0] == ack[3]) && (ack[1] == ack[4])){
+          if((ack[0] == ack[3]) && (ack[1] == ack[4])){//ack valid
             printtolog("Ack ");
             sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
             printtolog(seq);
@@ -382,7 +387,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
             incrementSQ();
             waiting = 0;
           }
-          else{
+          else{//ack invalid
             printtolog("Ack ");
             sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
             printtolog(seq);
@@ -394,10 +399,10 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
             printtolog(" \n");
 
             printtolog("Frame ");
-            sprintf(seq, "%d", frame_count);
+            sprintf(seq, "%lld", frame_count);
             printtolog(seq);
             printtolog(", part of Packet ");
-            sprintf(seq, "%d", packet_count);
+            sprintf(seq, "%lld", packet_count);
             printtolog(seq);
             printtolog(", being resent\n");            
 
@@ -409,7 +414,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     }
   }
 
-  if(nwl_ack_length == 0){
+  if(nwl_ack_length == 0){// If network layer ack hasn't been received yet
     ack_length = phl_recv(sockfd, ack, MAX_FRAME_SIZE);
     int j;
     for(j = 4; j < ack_length - 2; j++){
@@ -439,15 +444,18 @@ int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
 
 }
 
+//sends a frame over TCP
 int phl_send(int sockfd, unsigned char* buffer, int buffer_len){
   printtolog("Sending data to server\n");
   return send(sockfd, buffer, buffer_len, 0);
 }
 
+//recieves a frame over TCP
 int phl_recv(int sockfd, unsigned char* buffer, int buffer_len){
   return recv(sockfd, buffer, buffer_len, 0);
 }
 
+// increments the sequence number
 void incrementSQ(){
   seq_num[1]++;
   if(seq_num[1] == 0){
