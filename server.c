@@ -206,11 +206,11 @@ void dll_recv(unsigned char *frame, int size){
 	printtolog("\n");
 
 
-	printf("size=%d\n", size);
-	for(i = 0; i < size; i++){
-		printf("%d,", frame[i]);
-	}
-	printf("\n");
+	//printf("size=%d\n", size);
+	//for(i = 0; i < size; i++){
+	//	printf("%d,", frame[i]);
+	//}
+	//printf("\n");
 
 	unsigned char ack[5];
 	ack[0] = frame[0];
@@ -252,9 +252,9 @@ void dll_recv(unsigned char *frame, int size){
 	framewindowsize[framewindownext] = size - 6;
 	//framewindowseq[framewindownext][0] = frame[0];
 	//framewindowseq[framewindownext][1] = frame[1];
-	printf("About to addframeseq\n");
+	//printf("About to addframeseq\n");
 	addframeseq(frame[0], frame[1]);
-	printf("About to copy frame to buffer\n");
+	//printf("About to copy frame to buffer\n");
 	for(i = 4; i < size - 2; i++){
 		framewindow[framewindownext][i - 4] = frame[i];
 		//printf("i=%d\nsize = %d\n", i, size);
@@ -460,7 +460,7 @@ void addframeseq(unsigned char seq1, unsigned char seq2){
 		struct frameseq *ptr = frameseqhead;
 		while(!done){
 			if (ptr->next == NULL){
-				printf("ptr->next == NULL\n");
+				//printf("ptr->next == NULL\n");
 				ptr->next = malloc(sizeof(struct frameseq));
 				ptr->next->seq1 = seq1;
 				ptr->next->seq2 = seq2;
