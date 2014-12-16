@@ -121,6 +121,8 @@ int main(int argc, char *argv[]) {
   printtolog(photo_count);
   printtolog("\n");
 
+  struct timeval start, stop;
+  gettimeofday(&start, NULL);
 
 
 
@@ -164,18 +166,29 @@ int main(int argc, char *argv[]) {
   }
 
   fputc('\n', stdout); // Print a final linefeed
-  printtolog("Client disconnected from server");
+  printtolog("Client disconnected from server\n");
 
   char count[10000];
   printtolog("Number of frames sent: ");
   sprintf(count, "%d", frame_count);
-  printtolog(frame_count);
+  printtolog(count);
   printtolog("\n");
 
   printtolog("Number of frames resent: ");
   sprintf(count, "%d", resend_frame_count);
-  printtolog(resend_frame_count);
+  printtolog(count);
   printtolog("\n");
+
+  gettimeofday(&stop, NULL);
+  struct timeval elapsed;
+  timersub(&stop, &start, &elapsed);
+  long long total_time = 0;
+  total_time = (elapsed.tv_sec * 1000) + (elapsed.tv_usec / 1000);
+  char elapsed_time[100];
+  printtolog("Process took ");
+  sprintf(elapsed_time, "%lld", total_time);
+  printtolog(elapsed_time);
+  printtolog(" milliseconds\n");
 
   close(sock);
   exit(0);
