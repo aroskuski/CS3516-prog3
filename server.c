@@ -37,6 +37,7 @@ void keeplistsmall();
 void addframeseq(unsigned char seq1, unsigned char seq2);
 void freelist(struct frameseq *seq);
 unsigned short charstoshort(unsigned char char1, unsigned char char2);
+void incrementSQ();
 
 FILE *logfile;
 FILE *outfile;
@@ -50,6 +51,14 @@ int framewindownext = 0;
 int clientid = 1;
 struct frameseq *frameseqhead = NULL;
 int errorcounter = 0;
+long long errors = 0;
+long long packets = 0;
+long long dups = 0;
+long long frames = 0;
+long long packetssent = 0;
+long long framessent = 0;
+unsigned char seq_num[2] = {0,1};
+
 
 int main() {
 	int servsock;
@@ -137,6 +146,9 @@ void handleconnection(int clientsock){
 		keeplistsmall();
 	}
 	printtolog("Exiting\n");
+	char finalmsg[1000];
+	sprintf(finalmsg, "Frames Received: %lld\nErrors detected: %lld\nDuplicates detected: %lld\nPackets Received: %lld\nPackets Sent: %lld\nFrames Sent: %lld\n",  frames, errors, dups, packets, packetssent, framessent);
+	printtolog(finalmsg);
 	freelist(frameseqhead);
 	fclose(logfile);
 	exit(0);
@@ -174,6 +186,7 @@ int phl_recv(int clientsock) {
 	}
 	
 	printtolog("Frame received by physical layer, sending to Datalink Layer\n");
+	frames++;
 	dll_recv(frame, bytes_recved);
 	return 1;
 }
@@ -187,7 +200,10 @@ void dll_recv(unsigned char *frame, int size){
 	char seq[10];
 
 	if(errorcheck(frame, size)){
-		printtolog("Error detected in frame, discarding\n");
+		char errortext[50];
+		errors++;
+		sprintf(errortext, "Error %lld detected in frame, discarding\n", errors);
+		printtolog(errortext);
 		return;
 	}
 
@@ -199,12 +215,13 @@ void dll_recv(unsigned char *frame, int size){
 	dup = checkdup(frame[0], frame[1]);
 
 	if (dup){
+		dups++;
 		printtolog("Duplicate of Frame ");
-		sprintf(seq, "%d", frame[0]);
+		sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 		printtolog(seq);
-		printtolog(", ");
-		sprintf(seq, "%d", frame[1]);
-		printtolog(seq);
+		//printtolog(", ");
+		//sprintf(seq, "%d", frame[1]);
+		//printtolog(seq);
 		printtolog(" received.\n");
 	}
 		
@@ -244,20 +261,20 @@ void dll_recv(unsigned char *frame, int size){
 	if(frame[3] == EOP){
 		eop = 1;
 		printtolog("Frame ");
-		sprintf(seq, "%d", frame[0]);
+		sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 		printtolog(seq);
-		printtolog(", ");
-		sprintf(seq, "%d", frame[1]);
-		printtolog(seq);
+		//printtolog(", ");
+		//sprintf(seq, "%d", frame[1]);
+		//printtolog(seq);
 		printtolog(" is end of Packet\n");
 	}
 
 	printtolog("Storing frame ");
-	sprintf(seq, "%d", frame[0]);
+	sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 	printtolog(seq);
-	printtolog(", ");
-	sprintf(seq, "%d", frame[1]);
-	printtolog(seq);
+	//printtolog(", ");
+	//sprintf(seq, "%d", frame[1]);
+	//printtolog(seq);
 	printtolog(" in buffer\n");
 	//printf("About to malloc\n");
 	framewindow[framewindownext] = malloc(size - 6);
@@ -301,7 +318,14 @@ void dll_recv(unsigned char *frame, int size){
 void nwl_recv(unsigned char *packet, int size){
 	int eop = 0;
 	//unsigned char *packet = dll_recv();
+	char packetnum[20];
+	packets++;
+	sprintf(packetnum, "%lld", packets);
+	printtolog("Packet ");
+	printtolog(packetnum);
+	printtolog(" received\n");
 
+	
 	if (outclosed){
 		printtolog("Opening file ");
 		char outfilename[20];
@@ -318,7 +342,9 @@ void nwl_recv(unsigned char *packet, int size){
 		outclosed = 0;
 	}
 	
-	printtolog("Building Network Layer ACK\n");
+	printtolog("ACKing packet ");
+	printtolog(packetnum);
+	printtolog("\n");
 	unsigned char ack[1];
 	ack[0] = FT_ACK;
 	//ack[1] = packet[1];
@@ -326,16 +352,19 @@ void nwl_recv(unsigned char *packet, int size){
 	//ack[3] = packet[0];
 	//ack[4] = packet[1];
 	printtolog("Sending packet to Data Link Layer\n");
+	packetssent++;
 	dll_send(ack, 1);
 
 	if(packet[size - 1] == EOP){
 		eop = 1;
-		printtolog("Packet is end of picture\n");
+		printtolog("Packet ");
+		printtolog(packetnum);
+		printtolog(" is end of picture\n");
 	}
 
 	//FILE *outfile = fopen("photonew.jpg", "a");
 	if (fwrite(packet, 1, size - 1, outfile) == 0){
-		printf("fwrite failed\n");
+		printf("fwrite() failed\n");
 		exit(1);
 	}
 
@@ -364,24 +393,30 @@ void nwl_send(unsigned char *photo){
 
 void dll_send(unsigned char *packet, int size){
 	int i;
+	char seq[10];
 	unsigned char frame[130];
 	unsigned char ed[2];
-	printtolog("Building frame\n");
-	frame[0] = 0;
-	frame[1] = 1;
+	printtolog("Building frame ");
+	sprintf(seq,"%d\n", charstoshort(seq_num[0], seq_num[1]));
+	printtolog(seq);
+	frame[0] = seq_num[0];
+	frame[1] = seq_num[1];
 	frame[2] = FT_DATA;
 	frame[3] = EOP;
 	for (i = 0; i < size; i++){
 		frame[i + 4] = packet[i];
 	}
-	printtolog("Generating Error Dection bytes\n");
+	printtolog("Generating Error Dection bytes for frame");
+	printtolog(seq);
 	generateED(frame, size + 6, ed);
 	frame[(size + 6) - 2] = ed[0];
 	frame[(size + 6) - 1] = ed[1];
 
-	printtolog("Sending frame to Physical Layer\n");
+	printtolog("Sending to Physical Layer frame");
+	printtolog(seq);
 	phl_send(frame, size + 6);
-	
+	framessent++;
+	incrementSQ();
 }
 
 void phl_send(unsigned char *frame, int size){
@@ -495,4 +530,11 @@ void freelist(struct frameseq *seq){
 unsigned short charstoshort(unsigned char char1, unsigned char char2){
 	unsigned short result = (((unsigned short)char1) << 8) | char2;
 	return result;
+}
+
+void incrementSQ(){
+  seq_num[1]++;
+  if(seq_num[1] == 0){
+    seq_num[0]++;
+  }
 }
