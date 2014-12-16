@@ -38,6 +38,8 @@ char addr[INET_ADDRSTRLEN];
 unsigned char seq_num[2] = {0,0};
 FILE *logfile;
 int errorcounter = 0;
+int frame_count = 0;
+int resend_frame_count = 0;
 
 
 int connect_to(char *serverName, unsigned short severPort){
@@ -163,6 +165,18 @@ int main(int argc, char *argv[]) {
 
   fputc('\n', stdout); // Print a final linefeed
   printtolog("Client disconnected from server");
+
+  char count[10000];
+  printtolog("Number of frames sent: ");
+  sprintf(count, "%d", frame_count);
+  printtolog(frame_count);
+  printtolog("\n");
+
+  printtolog("Number of frames resent: ");
+  sprintf(count, "%d", resend_frame_count);
+  printtolog(resend_frame_count);
+  printtolog("\n");
+
   close(sock);
   exit(0);
 }
@@ -228,10 +242,10 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
   int buf_pos = 0;
   int frame_size;
-  unsigned char ack[MAX_FRAME_SIZE];
-  unsigned char nwl_ack[MAX_FRAME_SIZE];
   int nwl_ack_length = 0;
   int ack_length;
+  unsigned char ack[MAX_FRAME_SIZE];
+  unsigned char nwl_ack[MAX_FRAME_SIZE];
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
@@ -283,6 +297,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     }
 
     phl_send(sockfd, frame, frame_size);
+    frame_count++;
 
     if(errorcounter == 5){
       frame[frame_size - 1] ^= 1;
@@ -292,7 +307,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 
     while(waiting){
       timeout.tv_sec = 0;
-      timeout.tv_usec = 500000;
+      timeout.tv_usec = 100000;
       FD_ZERO(&bvfdRead);
       FD_SET(sockfd, &bvfdRead);
       readyNo = select(sockfd + 1, &bvfdRead, NULL, NULL, &timeout);
@@ -311,6 +326,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         printtolog(" \n");
 
         phl_send(sockfd, frame, frame_size);
+        resend_frame_count++;
       }
       else{
         FD_ZERO(&bvfdRead);
@@ -338,6 +354,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
             printtolog(" \n");
 
             phl_send(sockfd, frame, frame_size);
+            resend_frame_count;
           }
         }
       }
@@ -356,6 +373,8 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   for(i = 0; i < nwl_ack_length; i++){
     buffer[i] = nwl_ack[i];
   }
+
+
   return nwl_ack_length;
 }
 
