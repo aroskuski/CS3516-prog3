@@ -36,6 +36,7 @@ int checkdup(unsigned char seq1, unsigned char seq2);
 void keeplistsmall();
 void addframeseq(unsigned char seq1, unsigned char seq2);
 void freelist(struct frameseq *seq);
+unsigned short charstoshort(unsigned char char1, unsigned char char2);
 
 FILE *logfile;
 FILE *outfile;
@@ -209,11 +210,11 @@ void dll_recv(unsigned char *frame, int size){
 		
 	
 	printtolog("ACKing frame ");
-	sprintf(seq, "%d", frame[0]);
+	sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 	printtolog(seq);
-	printtolog(", ");
-	sprintf(seq, "%d", frame[1]);
-	printtolog(seq);
+	//printtolog(", ");
+	//sprintf(seq, "%d", frame[1]);
+	//printtolog(seq);
 	printtolog("\n");
 
 
@@ -489,4 +490,9 @@ void freelist(struct frameseq *seq){
 		freelist(seq->next);
 		free(seq);
 	}
+}
+
+unsigned short charstoshort(unsigned char char1, unsigned char char2){
+	unsigned short result = (((unsigned short)char1) << 8) | char2;
+	return result;
 }
