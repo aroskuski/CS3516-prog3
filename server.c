@@ -247,7 +247,7 @@ void dll_recv(unsigned char *frame, int size){
 	sprintf(seq, "%d", frame[1]);
 	printtolog(seq);
 	printtolog(" in buffer\n");
-	printf("About to malloc\n");
+	//printf("About to malloc\n");
 	framewindow[framewindownext] = malloc(size - 6);
 	framewindowsize[framewindownext] = size - 6;
 	//framewindowseq[framewindownext][0] = frame[0];
