@@ -1,3 +1,4 @@
+// Unless otherwise noted, all methods in this file were primarily written by Andrew Roskuski
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,21 +117,20 @@ int main() {
 	}
 }
 
+// Handles an incoming connection, effectively the "main()" for child processes
 void handleconnection(int clientsock){
 	//if(fcntl(clientsock, F_SETFL, fcntl(clientsock, F_GETFL) | O_NONBLOCK) < 0) {
 		// handle error
 	//}
 	char logfilename[20];
 	//char outfilename[20];
+	// open log file
 	char id[5];
 	strcpy(logfilename, "server_");
 	sprintf(id, "%d", clientid);
 	strcat(logfilename, id);
 	strcat(logfilename, ".log");
 	logfile = fopen(logfilename, "w");
-
-	
-	
 	if (logfile == NULL){
 		printf("failed to open logfile\n");
 		exit(1);
@@ -140,7 +140,9 @@ void handleconnection(int clientsock){
 	printtolog(id);
 	printtolog("\n");
 
+
 	int connection_open = 1;
+	//main loop
 	while (connection_open){
 		connection_open = phl_recv(clientsock);
 		keeplistsmall();
@@ -154,6 +156,7 @@ void handleconnection(int clientsock){
 	exit(0);
 }
 
+// receives a frame from TCP, and sends it to the data link layer
 int phl_recv(int clientsock) {
 	//fd_set socketset;
 	int bytes_recved = 0;
@@ -171,13 +174,13 @@ int phl_recv(int clientsock) {
 
 	result = recv(clientsock, frame, BUFSIZE, 0);
 	//printf("result=%d\n", result);
-	if (result == 0){
+	if (result == 0){// connection closed
 		printtolog("Connection closed by client\n");
 		return 0;
-	} else if (result < 0){
+	} else if (result < 0){//error
 		printf("recv() failed\n");
 		exit(1);
-	} else {
+	} else {//we got a frame
 		//nodata_count = 0;
 		//for(i = bytes_recved; i < result + bytes_recved; i++){
 		//	frame[i] = buf[i - bytes_recved];
@@ -191,6 +194,7 @@ int phl_recv(int clientsock) {
 	return 1;
 }
 
+//recieves frames fomr the physical layer, sends packets to the network layer once they are complete
 void dll_recv(unsigned char *frame, int size){
 	int eop = 0;
 	int i;
@@ -199,6 +203,7 @@ void dll_recv(unsigned char *frame, int size){
 	int dup = 0;
 	char seq[10];
 
+	//check for errors
 	if(errorcheck(frame, size)){
 		char errortext[50];
 		errors++;
@@ -212,6 +217,8 @@ void dll_recv(unsigned char *frame, int size){
 	//		dup = 1;
 	//	}
 	//}
+
+	//check for duplicates
 	dup = checkdup(frame[0], frame[1]);
 
 	if (dup){
@@ -225,7 +232,7 @@ void dll_recv(unsigned char *frame, int size){
 		printtolog(" received.\n");
 	}
 		
-	
+	//send ack for frame
 	printtolog("ACKing frame ");
 	sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 	printtolog(seq);
@@ -234,12 +241,6 @@ void dll_recv(unsigned char *frame, int size){
 	//printtolog(seq);
 	printtolog("\n");
 
-
-	//printf("size=%d\n", size);
-	//for(i = 0; i < size; i++){
-	//	printf("%d,", frame[i]);
-	//}
-	//printf("\n");
 
 	unsigned char ack[5];
 	ack[0] = frame[0];
@@ -254,11 +255,11 @@ void dll_recv(unsigned char *frame, int size){
 	}
 	phl_send(ack, 5);
 
-	if(dup){
+	if(dup){//we don't want to go further, this has already been done
 		return;
 	}
 
-	if(frame[3] == EOP){
+	if(frame[3] == EOP){// end of packet
 		eop = 1;
 		printtolog("Frame ");
 		sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
@@ -269,6 +270,7 @@ void dll_recv(unsigned char *frame, int size){
 		printtolog(" is end of Packet\n");
 	}
 
+	//storing frame in window
 	printtolog("Storing frame ");
 	sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
 	printtolog(seq);
@@ -315,10 +317,12 @@ void dll_recv(unsigned char *frame, int size){
 	}
 }
 
+// takes in packets and stores the payload to the disk
 void nwl_recv(unsigned char *packet, int size){
 	int eop = 0;
 	//unsigned char *packet = dll_recv();
 	char packetnum[20];
+	// packets do not actually have sequance numbers in them, but they must implicitly come in order
 	packets++;
 	sprintf(packetnum, "%lld", packets);
 	printtolog("Packet ");
@@ -326,7 +330,7 @@ void nwl_recv(unsigned char *packet, int size){
 	printtolog(" received\n");
 
 	
-	if (outclosed){
+	if (outclosed){//No open output file currently, need to open one
 		printtolog("Opening file ");
 		char outfilename[20];
 		char id[5];
@@ -342,6 +346,7 @@ void nwl_recv(unsigned char *packet, int size){
 		outclosed = 0;
 	}
 	
+	//Network layer acks are just one byte that contains FT_ACK
 	printtolog("ACKing packet ");
 	printtolog(packetnum);
 	printtolog("\n");
@@ -355,6 +360,7 @@ void nwl_recv(unsigned char *packet, int size){
 	packetssent++;
 	dll_send(ack, 1);
 
+	// Netwok layer packets are all 1-200 bytes of payload, with one End of Picture byte at the end	
 	if(packet[size - 1] == EOP){
 		eop = 1;
 		printtolog("Packet ");
@@ -368,7 +374,7 @@ void nwl_recv(unsigned char *packet, int size){
 		exit(1);
 	}
 
-	if (eop){
+	if (eop){//file is done
 		fclose(outfile);
 		outclosed = 1;
 		currfile++;
@@ -391,11 +397,13 @@ void nwl_send(unsigned char *photo){
 }
 */
 
+//Takes packet and sends it to the physical layer in a frame
 void dll_send(unsigned char *packet, int size){
 	int i;
 	char seq[10];
 	unsigned char frame[130];
 	unsigned char ed[2];
+	//Don't have to worry about splitting payload, will never have to
 	printtolog("Building frame ");
 	sprintf(seq,"%d\n", charstoshort(seq_num[0], seq_num[1]));
 	printtolog(seq);
@@ -532,6 +540,7 @@ unsigned short charstoshort(unsigned char char1, unsigned char char2){
 	return result;
 }
 
+//Written by Adam Ansel
 void incrementSQ(){
   seq_num[1]++;
   if(seq_num[1] == 0){
