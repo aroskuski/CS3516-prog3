@@ -318,7 +318,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 
         if(ack[2] != FT_ACK){
           int j;
-          for(j = 4; j = ack_length - 2; j++){
+          for(j = 4; j < ack_length - 2; j++){
             nwl_ack[j - 4] = ack[j];
             nwl_ack_length++;
           }
@@ -347,7 +347,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   if(nwl_ack_length == 0){
     ack_length = phl_recv(sockfd, ack, MAX_FRAME_SIZE);
     int j;
-    for(j = 4; j = ack_length - 2; j++){
+    for(j = 4; j < ack_length - 2; j++){
       nwl_ack[j - 4] = ack[j];
       nwl_ack_length++;
     }
