@@ -10,6 +10,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include "photo.h"
 
 
@@ -222,6 +224,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
   int buf_pos = 0;
   int frame_size;
+  unsigned char ack[5];
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
@@ -251,10 +254,47 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     frame[frame_size - 1] = ed[1];
 
     printtolog("Frame created, Sending to Physical Layer\n");
+    
+    struct timeval timeout;
+    fd_set bvfdRead;
+    int readyNo;
+    int waiting = 1;
+
     phl_send(sockfd, frame, frame_size);
 
-    frame_size = phl_recv(sockfd, frame, MAX_FRAME_SIZE);
-    incrementSQ();
+    while(waiting){
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 500000;
+      FD_ZERO(&bvfdRead);
+      FD_SET(sockfd, &bvfdRead);
+      readyNo = select(sockfd + 1, &bvfdRead, NULL, NULL, &timeout);
+
+      if(readyNo < 0){ 
+        printf("Select failed\n");
+        exit(1);
+      }
+      else if(readyNo == 0){
+        phl_send(sockfd, frame, frame_size);
+      }
+      else{
+        FD_ZERO(&bvfdRead);
+        phl_recv(sockfd, ack, 5);
+
+        if(ack[2] != FT_ACK){
+          //
+        }
+        else{
+          if((ack[0] == ack[3]) && (ack[1] == ack[4])){
+            incrementSQ();
+            waiting = 0;
+          }
+          else{
+            phl_send(sockfd, frame, frame_size);
+          }
+        }
+      }
+    }
+
   }
 }
 
