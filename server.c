@@ -39,14 +39,14 @@ void freelist(struct frameseq *seq);
 
 FILE *logfile;
 FILE *outfile;
-int currfile = 0;
+int currfile = 1;
 int outclosed = 1;
 int clientsock;
 unsigned char *framewindow[10];
 unsigned char framewindowseq[10][2];
 int framewindowsize[10];
 int framewindownext = 0;
-int clientid = 0;
+int clientid = 1;
 struct frameseq *frameseqhead = NULL;
 int errorcounter = 0;
 
