@@ -184,10 +184,10 @@ void dll_recv(unsigned char *frame, int size){
 	int k = 0;
 	int dup = 0;
 
-	//if(errorcheck(frame, size)){
-	//	printtolog("Error detected in frame, discarding\n");
-	//	return;
-	//}
+	if(errorcheck(frame, size)){
+		printtolog("Error detected in frame, discarding\n");
+		return;
+	}
 
 	//for(i = 0; i < framewindownext; i++){
 	//	if((frame[0] == framewindowseq[i][0])  && (frame[1] == framewindowseq[i][1])){
@@ -407,7 +407,7 @@ int errorcheck(unsigned char *frame, int size){
 			checkbytes[1] ^= frame[i + 1];
 		}
 	}
-	return ((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
+	return !((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
 }
 
 void generateED(unsigned char *frame, int size, unsigned char *ed){
