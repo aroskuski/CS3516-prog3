@@ -227,6 +227,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 
   //printf("Buffer Length=%d\n", buffer_len);
   while(buf_pos < buffer_len){
+
     frame[0] = seq_num[0];
     frame[1] = seq_num[1];
     frame[2] = FT_DATA;
@@ -245,8 +246,9 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
       frame_size++;
     }
     frame_size += 2;
-    frame[frame_size - 2] = 0;
-    frame[frame_size - 1] = 1;
+    generateED(frame, frame_size, ed);
+    frame[frame_size - 2] = ed[0];
+    frame[frame_size - 1] = ed[1];
 
     printtolog("Frame created, Sending to Physical Layer\n");
     phl_send(sockfd, frame, frame_size);
@@ -286,7 +288,15 @@ void incrementSQ(){
 }
 
 void generateED(unsigned char *frame, int size, unsigned char *ed){
-
+  int i;
+  ed[0] = 0;
+  ed[1] = 0;
+  for(i = 0; i < (size - 2); i += 2){
+    ed[0] ^= frame[i];
+    if (i + 1 < size -2){
+      ed[1] ^= frame[i + 1];
+    }
+  }
 }
 
 void printtolog(char *logtext){
