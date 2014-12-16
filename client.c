@@ -292,7 +292,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 
     while(waiting){
       timeout.tv_sec = 0;
-      timeout.tv_usec = 500000;
+      timeout.tv_usec = 100000;
       FD_ZERO(&bvfdRead);
       FD_SET(sockfd, &bvfdRead);
       readyNo = select(sockfd + 1, &bvfdRead, NULL, NULL, &timeout);
