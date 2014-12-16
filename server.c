@@ -427,6 +427,7 @@ void dll_send(unsigned char *packet, int size){
 	incrementSQ();
 }
 
+//Sends the given frame over TCP
 void phl_send(unsigned char *frame, int size){
 	printtolog("Sending data over TCP\n");
 	ssize_t sent = send(clientsock, frame, size, 0);
@@ -436,6 +437,7 @@ void phl_send(unsigned char *frame, int size){
 	}
 }
 
+//calculates the total size of the data currently in the window
 int totalwindowsize(){
 	int result;
 	int i;
@@ -445,12 +447,14 @@ int totalwindowsize(){
 	return result;
 }
 
+//Printthe the given string to the log and flushes the buffer
 void printtolog(char *logtext){
 	fputs(logtext, logfile);
 	fflush(logfile);
 	//fputc('\n', logfile);
 }
 
+// Returns 1 if the frame passes the error check, false if not
 int errorcheck(unsigned char *frame, int size){
 	unsigned char checkbytes[2];
 	int i;
@@ -465,6 +469,7 @@ int errorcheck(unsigned char *frame, int size){
 	return !((checkbytes[0] == frame[size - 2]) && (checkbytes[1] == frame[size - 1]));
 }
 
+//Generates the error detection bytes for the frame and puts them in ed
 void generateED(unsigned char *frame, int size, unsigned char *ed){
 	int i;
 	ed[0] = 0;
@@ -477,6 +482,7 @@ void generateED(unsigned char *frame, int size, unsigned char *ed){
 	}
 }
 
+//Checks if the sequence number has already been received
 int checkdup(unsigned char seq1, unsigned char seq2){
 	int result = 0;
 	struct frameseq* ptr = frameseqhead;
@@ -489,6 +495,7 @@ int checkdup(unsigned char seq1, unsigned char seq2){
 	return result;
 }
 
+//keeps the sequence number list to 100 entries max
 void keeplistsmall(){
 	int i = 0;	
 	struct frameseq* ptr = frameseqhead;
@@ -504,6 +511,7 @@ void keeplistsmall(){
 	}
 }
 
+//adds a sequence number to the linked list of sequence numbers
 void addframeseq(unsigned char seq1, unsigned char seq2){
 	int done = 0;	
 	if (frameseqhead == NULL){
@@ -528,6 +536,7 @@ void addframeseq(unsigned char seq1, unsigned char seq2){
 	}
 }
 
+// frees the sequence number list
 void freelist(struct frameseq *seq){
 	if(seq != NULL){
 		freelist(seq->next);
@@ -535,6 +544,7 @@ void freelist(struct frameseq *seq){
 	}
 }
 
+// converts two unsigned chars to an unsigned short
 unsigned short charstoshort(unsigned char char1, unsigned char char2){
 	unsigned short result = (((unsigned short)char1) << 8) | char2;
 	return result;
