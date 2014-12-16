@@ -183,6 +183,7 @@ void dll_recv(unsigned char *frame, int size){
 	int j;
 	int k = 0;
 	int dup = 0;
+	char seq[10];
 
 	if(errorcheck(frame, size)){
 		printtolog("Error detected in frame, discarding\n");
@@ -195,8 +196,18 @@ void dll_recv(unsigned char *frame, int size){
 	//	}
 	//}
 	dup = checkdup(frame[0], frame[1]);
+
+	if (dup){
+		printtolog("Duplicate of Frame ");
+		sprintf(seq, "%d", frame[0]);
+		printtolog(seq);
+		printtolog(", ");
+		sprintf(seq, "%d", frame[1]);
+		printtolog(seq);
+		printtolog(" received.\n");
+	}
 		
-	char seq[10];
+	
 	printtolog("ACKing frame ");
 	sprintf(seq, "%d", frame[0]);
 	printtolog(seq);
@@ -218,11 +229,11 @@ void dll_recv(unsigned char *frame, int size){
 	ack[2] = FT_ACK;
 	ack[3] = frame[0];
 	ack[4] = frame[1];
-	//errorcounter++;
-	//if (errorcounter == 13){
-	//	ack[3] ^= 1;
-	//	errorcounter = 0;
-	//}
+	errorcounter++;
+	if (errorcounter == 13){
+		ack[3] ^= 1;
+		errorcounter = 0;
+	}
 	phl_send(ack, 5);
 
 	if(dup){
