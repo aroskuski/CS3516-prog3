@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
   for (j = 0; j < numofPhotos; j++)
   {
     photo_len = sprintf(photo_name, "%s%d%d.%s", PHOTO, client_id, j + 1, PHOTO_EXT);
-    printf("%s\n", photo_name);
+    //printf("%s\n", photo_name);
 
     if((file = open(photo_name, O_RDONLY)) < 0){
       printf("File failed to open\n");
@@ -153,8 +153,11 @@ int main(int argc, char *argv[]) {
         pkt_buffer[pkt_size - 1] = EOP;
       }
       printtolog("Packet created, Sending to Datalink Layer\n");
-      dll_send(sock, pkt_buffer, pkt_size);
-      //dll_recv(ack);
+      int ack_length;
+      ack_length = dll_send(sock, pkt_buffer, pkt_size);
+      if(pkt_buffer[0] != FT_ACK){
+        exit(1);
+      }
     }
   }
 
@@ -225,7 +228,10 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
   int i;
   int buf_pos = 0;
   int frame_size;
-  unsigned char ack[5];
+  unsigned char ack[MAX_FRAME_SIZE];
+  unsigned char nwl_ack[MAX_FRAME_SIZE];
+  int nwl_ack_length = 0;
+  int ack_length;
   unsigned char frame[MAX_FRAME_SIZE];
   unsigned char ed[2];
 
@@ -296,7 +302,7 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         exit(1);
       }
       else if(readyNo == 0){
-        printtolog("Resending frame" );
+        printtolog("Resending frame ");
         sprintf(seq, "%d", frame[0]);
         printtolog(seq);
         printtolog(", ");
@@ -308,10 +314,14 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
       }
       else{
         FD_ZERO(&bvfdRead);
-        phl_recv(sockfd, ack, 5);
+        ack_length = phl_recv(sockfd, ack, MAX_FRAME_SIZE);
 
         if(ack[2] != FT_ACK){
-          //
+          int j;
+          for(j = 4; j = ack_length - 2; j++){
+            nwl_ack[j - 4] = ack[j];
+            nwl_ack_length++;
+          }
         }
         else{
           if((ack[0] == ack[3]) && (ack[1] == ack[4])){
@@ -319,13 +329,34 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
             waiting = 0;
           }
           else{
+            printtolog("Resending frame ");
+            sprintf(seq, "%d", frame[0]);
+            printtolog(seq);
+            printtolog(", ");
+            sprintf(seq, "%d", frame[1]);
+            printtolog(seq);
+            printtolog(" \n");
+
             phl_send(sockfd, frame, frame_size);
           }
         }
       }
     }
-
   }
+
+  if(nwl_ack_length == 0){
+    ack_length = phl_recv(sockfd, ack, MAX_FRAME_SIZE);
+    int j;
+    for(j = 4; j = ack_length - 2; j++){
+      nwl_ack[j - 4] = ack[j];
+      nwl_ack_length++;
+    }
+  }
+
+  for(i = 0; i < nwl_ack_length; i++){
+    buffer[i] = nwl_ack[i];
+  }
+  return nwl_ack_length;
 }
 
 int dll_recv(int sockfd, unsigned char* buffer, int buffer_len){
