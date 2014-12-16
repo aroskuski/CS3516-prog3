@@ -1,3 +1,5 @@
+//Unless otherwise noted all methods were written by Adam Ansel
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -32,14 +34,16 @@ int phl_recv(int sockfd, unsigned char* buffer, int buffer_len);
 void incrementSQ();
 void generateED(unsigned char *frame, int size, unsigned char *ed);
 void printtolog(char *logtext);
+unsigned short charstoshort(unsigned char char1, unsigned char char2);
 
 
 char addr[INET_ADDRSTRLEN];
-unsigned char seq_num[2] = {0,0};
+unsigned char seq_num[2] = {0,1};
 FILE *logfile;
-int errorcounter = 0;
-int frame_count = 0;
-int resend_frame_count = 0;
+long long errorcounter = 0;
+long long frame_count = 0;
+long long resend_frame_count = 0;
+long long packet_count = 0;
 
 
 int connect_to(char *serverName, unsigned short severPort){
@@ -125,7 +129,7 @@ int main(int argc, char *argv[]) {
   gettimeofday(&start, NULL);
 
 
-
+  //
   int i;
   int j;
   for (j = 0; j < numofPhotos; j++)
@@ -158,6 +162,7 @@ int main(int argc, char *argv[]) {
       }
       printtolog("Packet created, Sending to Datalink Layer\n");
       int ack_length;
+      packet_count++;
       ack_length = dll_send(sock, pkt_buffer, pkt_size);
       if(pkt_buffer[0] != FT_ACK){
         exit(1);
@@ -170,12 +175,12 @@ int main(int argc, char *argv[]) {
 
   char count[10000];
   printtolog("Number of frames sent: ");
-  sprintf(count, "%d", frame_count);
+  sprintf(count, "%lld", frame_count);
   printtolog(count);
   printtolog("\n");
 
   printtolog("Number of frames resent: ");
-  sprintf(count, "%d", resend_frame_count);
+  sprintf(count, "%lld", resend_frame_count);
   printtolog(count);
   printtolog("\n");
 
@@ -291,12 +296,17 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
 
     char seq[10];
     printtolog("Sending frame ");
-    sprintf(seq, "%d", frame[0]);
-    printtolog(seq);
-    printtolog(", ");
-    sprintf(seq, "%d", frame[1]);
+    sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
     printtolog(seq);
     printtolog(" \n");
+
+    printtolog("Frame ");
+    sprintf(seq, "%d", frame_count + 1);
+    printtolog(seq);
+    printtolog(", part of Packet ");
+    sprintf(seq, "%d", packet_count);
+    printtolog(seq);
+    printtolog(", being sent\n");
 
     
     struct timeval timeout;
@@ -330,13 +340,23 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         exit(1);
       }
       else if(readyNo == 0){
-        printtolog("Resending frame ");
-        sprintf(seq, "%d", frame[0]);
+        printtolog("Ack ");
+        sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
         printtolog(seq);
-        printtolog(", ");
-        sprintf(seq, "%d", frame[1]);
+        printtolog(" was not received and timeout occurred\n");
+
+        printtolog("Resending frame ");
+        sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
         printtolog(seq);
         printtolog(" \n");
+
+        printtolog("Frame ");
+        sprintf(seq, "%d", frame_count);
+        printtolog(seq);
+        printtolog(", part of Packet ");
+        sprintf(seq, "%d", packet_count);
+        printtolog(seq);
+        printtolog(", being resent\n");
 
         phl_send(sockfd, frame, frame_size);
         resend_frame_count++;
@@ -354,17 +374,32 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         }
         else{
           if((ack[0] == ack[3]) && (ack[1] == ack[4])){
+            printtolog("Ack ");
+            sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
+            printtolog(seq);
+            printtolog(" was received\n");
+
             incrementSQ();
             waiting = 0;
           }
           else{
-            printtolog("Resending frame ");
-            sprintf(seq, "%d", frame[0]);
+            printtolog("Ack ");
+            sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
             printtolog(seq);
-            printtolog(", ");
-            sprintf(seq, "%d", frame[1]);
+            printtolog(" was not received\n");
+
+            printtolog("Resending frame ");
+            sprintf(seq, "%d", charstoshort(frame[0], frame[1]));
             printtolog(seq);
             printtolog(" \n");
+
+            printtolog("Frame ");
+            sprintf(seq, "%d", frame_count);
+            printtolog(seq);
+            printtolog(", part of Packet ");
+            sprintf(seq, "%d", packet_count);
+            printtolog(seq);
+            printtolog(", being resent\n");            
 
             phl_send(sockfd, frame, frame_size);
             resend_frame_count;
@@ -420,6 +455,7 @@ void incrementSQ(){
   }
 }
 
+//Method written by Andrew Roskuski
 void generateED(unsigned char *frame, int size, unsigned char *ed){
   int i;
   ed[0] = 0;
@@ -432,9 +468,16 @@ void generateED(unsigned char *frame, int size, unsigned char *ed){
   }
 }
 
+//Method written by Andrew Roskuski
 void printtolog(char *logtext){
   fputs(logtext, logfile);
   fflush(logfile);
   //fputc('\n', logfile);
+}
+
+//Method written by Andrew Roskuski
+unsigned short charstoshort(unsigned char char1, unsigned char char2){
+  unsigned short result = (((unsigned short)char1) << 8) | char2;
+  return result;
 }
 
