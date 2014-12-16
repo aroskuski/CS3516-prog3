@@ -403,7 +403,7 @@ int errorcheck(unsigned char *frame, int size){
 	checkbytes[1] = 0;
 	for(i = 0; i < (size - 2); i += 2){
 		checkbytes[0] ^= frame[i];
-		if (i < size -2){
+		if (i + 1 < size - 2){
 			checkbytes[1] ^= frame[i + 1];
 		}
 	}
@@ -416,7 +416,7 @@ void generateED(unsigned char *frame, int size, unsigned char *ed){
 	ed[1] = 0;
 	for(i = 0; i < (size - 2); i += 2){
 		ed[0] ^= frame[i];
-		if (i < size -2){
+		if (i + 1 < size - 2){
 			ed[1] ^= frame[i + 1];
 		}
 	}
