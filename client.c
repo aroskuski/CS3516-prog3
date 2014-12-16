@@ -37,6 +37,7 @@ void printtolog(char *logtext);
 char addr[INET_ADDRSTRLEN];
 unsigned char seq_num[2] = {0,0};
 FILE *logfile;
+int errorcounter = 0;
 
 
 int connect_to(char *serverName, unsigned short severPort){
@@ -254,13 +255,34 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
     frame[frame_size - 1] = ed[1];
 
     printtolog("Frame created, Sending to Physical Layer\n");
+
+    char seq[10];
+    printtolog("Sending frame ");
+    sprintf(seq, "%d", frame[0]);
+    printtolog(seq);
+    printtolog(", ");
+    sprintf(seq, "%d", frame[1]);
+    printtolog(seq);
+    printtolog(" \n");
+
     
     struct timeval timeout;
     fd_set bvfdRead;
     int readyNo;
     int waiting = 1;
 
+    errorcounter++;
+    if(errorcounter == 5){
+      frame[frame_size - 1] ^= 1;
+    }
+
     phl_send(sockfd, frame, frame_size);
+
+    if(errorcounter == 5){
+      frame[frame_size - 1] ^= 1;
+      errorcounter = 0;
+    }
+
 
     while(waiting){
       timeout.tv_sec = 0;
@@ -274,6 +296,14 @@ int dll_send(int sockfd, unsigned char* buffer, int buffer_len){
         exit(1);
       }
       else if(readyNo == 0){
+        printtolog("Resending frame" );
+        sprintf(seq, "%d", frame[0]);
+        printtolog(seq);
+        printtolog(", ");
+        sprintf(seq, "%d", frame[1]);
+        printtolog(seq);
+        printtolog(" \n");
+
         phl_send(sockfd, frame, frame_size);
       }
       else{
